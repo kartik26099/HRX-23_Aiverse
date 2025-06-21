@@ -1,0 +1,32 @@
+# Core web framework
+fastapi==0.115.13
+uvicorn[standard]==0.32.1
+
+# Environment variable management
+python-dotenv==1.0.1
+
+# HTTP requests
+requests==2.32.3
+
+# Machine learning and NLP
+transformers==4.45.0
+torch==2.3.1
+
+# Image processing
+Pillow==11.0.0
+
+# Audio/Video processing
+openai-whisper==20231117
+
+# Jinja2 for templating (used by FastAPI)
+jinja2==3.1.6
+python-multipart==0.0.20
+
+# Additional dependencies for file processing
+python-magic==0.4.27
+
+# System dependencies (not installable via pip, must be installed separately):
+# ffmpeg  # Required for openai-whisper audio/video processing
+#
+# If you encounter errors related to tiktoken or rust, you may also need:
+# setuptools-rust 

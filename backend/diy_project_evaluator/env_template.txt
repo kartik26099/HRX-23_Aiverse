@@ -1,0 +1,19 @@
+# DIY Project Evaluator Environment Configuration
+
+# Server Configuration
+PORT=8000
+
+# LLM API Configuration (Optional - will use mock responses if not provided)
+# Get a free API key from https://openrouter.ai/
+LLM_API_URL=https://openrouter.ai/api/v1/chat/completions
+LLM_API_KEY=your_openrouter_api_key_here
+
+# Model Configuration
+MODEL_NAME=deepseek/deepseek-r1-0528:free
+
+# File Upload Configuration
+MAX_FILE_SIZE=50MB
+UPLOAD_DIR=uploads
+
+# CORS Configuration
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000 

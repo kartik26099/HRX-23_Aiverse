@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DIY Project Evaluator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="file"], input[type="text"], textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            white-space: pre-wrap;
+        }
+        .mt-4 {
+            margin-top: 1.5rem;
+        }
+        .bg-light {
+            background-color: #f8f9fa;
+        }
+        .p-3 {
+            padding: 1rem;
+        }
+        .rounded {
+            border-radius: 0.25rem;
+        }
+        .card {
+            margin-bottom: 1rem;
+        }
+        .card-header {
+            background-color: #f0f0f0;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+        }
+        .card-body {
+            padding: 1rem;
+        }
+        .mb-0 {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>DIY Project Evaluator</h1>
+    <form id="evaluationForm">
+        <label for="file">Upload Media (Image or Video):</label>
+        <input type="file" id="file" name="file" accept="image/*,video/*" required>
+        <label for="task">Task:</label>
+        <input type="text" id="task" name="task" required>
+        <label for="summary">Summary:</label>
+        <textarea id="summary" name="summary" rows="4" required></textarea>
+        <button type="submit">Evaluate</button>
+    </form>
+    <div id="result" class="mt-4" style="display: none;">
+        <h3>Evaluation Report:</h3>
+        <pre id="evaluation-report" class="bg-light p-3 rounded"></pre>
+        
+        <h3 class="mt-4">Raw Agent Responses:</h3>
+        <div class="raw-responses">
+            <div class="card mb-3">
+                <div class="card-header">Relevance Agent</div>
+                <div class="card-body">
+                    <pre id="relevance-response" class="mb-0"></pre>
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">Completion Agent</div>
+                <div class="card-body">
+                    <pre id="completion-response" class="mb-0"></pre>
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">Presentation Agent</div>
+                <div class="card-body">
+                    <pre id="presentation-response" class="mb-0"></pre>
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">Functionality Agent</div>
+                <div class="card-body">
+                    <pre id="functionality-response" class="mb-0"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('evaluationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('file', document.getElementById('file').files[0]);
+            formData.append('task', document.getElementById('task').value);
+            formData.append('summary', document.getElementById('summary').value);
+
+            try {
+                const response = await fetch('/evaluate', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                displayResult(data);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('output').textContent = 'An error occurred during evaluation.';
+            }
+        });
+
+        function displayResult(data) {
+            const resultDiv = document.getElementById('result');
+            const reportPre = document.getElementById('evaluation-report');
+            const relevancePre = document.getElementById('relevance-response');
+            const completionPre = document.getElementById('completion-response');
+            const presentationPre = document.getElementById('presentation-response');
+            const functionalityPre = document.getElementById('functionality-response');
+            
+            // Display the final report
+            reportPre.textContent = data.evaluation_report;
+            
+            // Display raw responses
+            if (data.raw_responses) {
+                relevancePre.textContent = data.raw_responses.relevance;
+                completionPre.textContent = data.raw_responses.completion;
+                presentationPre.textContent = data.raw_responses.presentation;
+                functionalityPre.textContent = data.raw_responses.functionality;
+            }
+            
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

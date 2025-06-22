@@ -1,5 +1,5 @@
 from document_cache import document_cache
-from groq_client import groq_client
+from openrouter_client import openrouter_client
 from config import MODEL_NAME
 import logging
 import os
@@ -148,7 +148,7 @@ async def analyze_document_with_ai(doc_id: str, doc_type: str) -> str:
         ]
 
         logger.info(f"Sending {doc_type} document for analysis")
-        completion = groq_client.chat.completions.create(
+        completion = openrouter_client.chat.completions.create(
             messages=messages,
             model=MODEL_NAME,
             temperature=0.5,

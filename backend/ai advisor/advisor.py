@@ -1,4 +1,4 @@
-from groq_client import groq_client
+from openrouter_client import openrouter_client
 from config import MODEL_NAME
 from schemas import ChatMessage
 from typing import List, Optional, Dict
@@ -80,10 +80,10 @@ async def career_advisor_response(
         # Add the enhanced user message
         conversation.append({"role": "user", "content": enhanced_message})
         
-        logger.info(f"Sending request to Groq with {len(conversation)} messages")
+        logger.info(f"Sending request to OpenRouter with {len(conversation)} messages")
         
         # Add repetition penalties to the model parameters
-        completion =groq_client.chat.completions.create(
+        completion = openrouter_client.chat.completions.create(
             messages=conversation,
             model=MODEL_NAME,
             temperature=0.7,
@@ -93,11 +93,11 @@ async def career_advisor_response(
         )
         
         response = completion.choices[0].message.content.strip()
-        logger.info(f"Received response from Groq: {response[:50]}...")
+        logger.info(f"Received response from OpenRouter: {response[:50]}...")
         return response
         
     except Exception as e:
-        logger.error(f"Error getting response from Groq API: {str(e)}")
+        logger.error(f"Error getting response from OpenRouter API: {str(e)}")
         return "I'm sorry, I'm having trouble connecting to my brain right now. Please try again later."
 
 async def generate_quiz_from_context(topic: str, history: List[ChatMessage]) -> dict:
@@ -139,7 +139,7 @@ async def generate_quiz_from_context(topic: str, history: List[ChatMessage]) -> 
         }}
         """
 
-        chat_completion = groq_client.chat.completions.create(
+        chat_completion = openrouter_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that creates quizzes based on conversations."},
                 {"role": "user", "content": prompt},
@@ -157,5 +157,5 @@ async def generate_quiz_from_context(topic: str, history: List[ChatMessage]) -> 
         logger.error(f"Failed to decode JSON from quiz response: {e}")
         return {"error": "The model returned a malformed quiz. Please try again."}
     except Exception as e:
-        logger.error(f"Error generating quiz from Groq API: {str(e)}")
+        logger.error(f"Error generating quiz from OpenRouter API: {str(e)}")
         return {"error": "I encountered an error while trying to create the quiz."}

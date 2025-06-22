@@ -74,6 +74,72 @@
   }
 }
 
+/* Google Translate Styles - Prevent hydration issues */
+#google_translate_element {
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  z-index: -9999 !important;
+}
+
+.goog-te-banner-frame {
+  display: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+
+.goog-te-menu-value {
+  display: none !important;
+}
+
+.goog-te-gadget {
+  display: none !important;
+}
+
+.goog-te-combo {
+  display: none !important;
+}
+
+/* Hide Google Translate banner */
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+
+/* Prevent body modifications during hydration */
+body {
+  top: 0px !important;
+  position: relative !important;
+  min-height: 100% !important;
+}
+
+/* Hide Google Translate elements but keep them functional */
+.goog-te-banner-frame,
+.goog-te-banner-frame * {
+  display: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -128,6 +194,22 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Force-hide Google Translate elements */
+.goog-te-banner-frame, .goog-te-gadget-simple, .goog-tooltip {
+  display: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !importan;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+body > .skiptranslate {
+  display: none !important;
+  visibility: hidden !important;
 }
 
 @layer utilities {

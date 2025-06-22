@@ -16,7 +16,24 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for cross-origin requests from your React frontend
+
+# BRUTE FORCE CORS - Allow everything
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
+# Global OPTIONS handler
+@app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
+@app.route('/<path:path>', methods=['OPTIONS'])
+def handle_options(path):
+    response = app.make_response('')
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response, 200
 
 # In-memory storage for chat sessions
 chat_sessions = {}
@@ -148,7 +165,7 @@ async def advisor():
         if document_context:
             enhanced_message = f"{message}\n\nContext from uploaded document:\n{document_context}"
         
-        # Get response from career advisor
+        # Get response from career advisor - NOW WITH AWAIT
         response = await career_advisor_response(enhanced_message, chat_history)
         
         # Update session
@@ -313,5 +330,5 @@ def get_document_metadata():
 def home():
     return {"message": "Career Advisor Chatbot API is running."}
 
-if __name__ == '__main__':
-    app.run(debug=True,port=5001)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5274, debug=True)

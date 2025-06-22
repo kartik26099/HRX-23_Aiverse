@@ -57,6 +57,7 @@ PySocks==1.7.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 requests==2.32.3
+youtube_transcript_api
 roman-numerals-py==3.1.0
 rsa==4.9.1
 scholarly==1.7.11
@@ -94,3 +95,22 @@ sqlalchemy==2.0.23
 Flask[async]
 sentence-transformers==4.1.0
 huggingface-hub==0.30.2
+
+# Core web framework
+fastapi==0.115.13
+uvicorn[standard]==0.32.1
+
+# Machine learning and NLP
+transformers==4.45.0
+torch==2.3.1
+
+# Image processing
+Pillow==11.0.0
+
+# Audio/Video processing
+openai-whisper==20231117
+
+# Additional dependencies for file processing
+python-multipart==0.0.20
+python-magic==0.4.27
+openai==1.35.10

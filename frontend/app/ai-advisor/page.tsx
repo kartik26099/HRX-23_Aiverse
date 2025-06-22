@@ -28,7 +28,7 @@ import {
 } from "lucide-react"
 
 // --- Constants ---
-const API_BASE_URL = "http://localhost:5000/api"
+const API_BASE_URL = "http://localhost:5274/api"
 
 // --- Type Definitions ---
 interface Message {

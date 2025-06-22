@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, Plus, Trash2, Download, Bell, CheckCircle, Circle } from "lucide-react"
+import { Calendar, Clock, Plus, Trash2, Download, Bell, CheckCircle, Circle, CalendarDays, Settings } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { ErrorBoundary } from "@/components/error-boundary"
+import { useDialogState } from "@/hooks/use-dialog-state"
+import React from "react"
 
 interface Task {
   id: string
@@ -23,8 +33,13 @@ interface Task {
   category: string
   priority: "low" | "medium" | "high"
   completed: boolean
+  assigned_date: string
   scheduledDate?: string
   scheduledTime?: string
+  specificTime?: {
+    date: string
+    time: string
+  }
 }
 
 interface ScheduleSlot {
@@ -35,51 +50,32 @@ interface ScheduleSlot {
 }
 
 export default function SchedulerPage() {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: "1",
-      title: "Complete React Tutorial",
-      hours: 4,
-      category: "Learning",
-      priority: "high",
-      completed: false,
-    },
-    {
-      id: "2",
-      title: "Build Portfolio Website",
-      hours: 8,
-      category: "Project",
-      priority: "high",
-      completed: false,
-    },
-    {
-      id: "3",
-      title: "Study Data Structures",
-      hours: 3,
-      category: "Learning",
-      priority: "medium",
-      completed: false,
-    },
-    {
-      id: "4",
-      title: "Practice Coding Problems",
-      hours: 2,
-      category: "Practice",
-      priority: "medium",
-      completed: true,
-    },
-  ])
+  return (
+    <ErrorBoundary>
+      <SchedulerContent />
+    </ErrorBoundary>
+  )
+}
+
+function SchedulerContent() {
+  const [tasks, setTasks] = useState<Task[]>([])
 
   const [newTask, setNewTask] = useState({
     title: "",
     hours: "",
     category: "Learning",
     priority: "medium" as const,
+    assigned_date: new Date().toISOString().split('T')[0],
   })
 
   const [schedule, setSchedule] = useState<ScheduleSlot[]>([])
   const [selectedWeek, setSelectedWeek] = useState(new Date())
   const [isAddingTask, setIsAddingTask] = useState(false)
+  const [specificTimes, setSpecificTimes] = useState<{[key: string]: {date: string, time: string}}>({})
+  
+  // Use custom dialog state hook for better error handling
+  const specificTimeDialog = useDialogState(false, { cleanupOnUnmount: true })
+  const selectedTaskForTime = specificTimeDialog.data as Task | null
 
   const categories = ["Learning", "Project", "Practice", "Research", "Other"]
   const priorities = [
@@ -89,18 +85,8 @@ export default function SchedulerPage() {
   ]
 
   const timeSlots = [
-    "09:00",
-    "10:00",
-    "11:00",
-    "12:00",
-    "13:00",
-    "14:00",
-    "15:00",
-    "16:00",
-    "17:00",
-    "18:00",
-    "19:00",
-    "20:00",
+    "00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
+    "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"
   ]
 
   const getWeekDates = (startDate: Date) => {
@@ -119,7 +105,7 @@ export default function SchedulerPage() {
   const weekDates = getWeekDates(selectedWeek)
 
   const addTask = () => {
-    if (!newTask.title.trim() || !newTask.hours) return
+    if (!newTask.title.trim() || !newTask.hours || !newTask.assigned_date) return
 
     const task: Task = {
       id: Date.now().toString(),
@@ -128,15 +114,31 @@ export default function SchedulerPage() {
       category: newTask.category,
       priority: newTask.priority,
       completed: false,
+      assigned_date: newTask.assigned_date,
     }
 
     setTasks([...tasks, task])
-    setNewTask({ title: "", hours: "", category: "Learning", priority: "medium" })
+    setNewTask({ 
+      title: "", 
+      hours: "", 
+      category: "Learning", 
+      priority: "medium",
+      assigned_date: new Date().toISOString().split('T')[0],
+    })
     setIsAddingTask(false)
   }
 
   const deleteTask = (id: string) => {
     setTasks(tasks.filter((task) => task.id !== id))
+    // Remove specific time if it exists
+    const newSpecificTimes = { ...specificTimes }
+    delete newSpecificTimes[id]
+    setSpecificTimes(newSpecificTimes)
+    
+    // Close dialog if the deleted task was selected
+    if (selectedTaskForTime?.id === id) {
+      specificTimeDialog.close()
+    }
   }
 
   const toggleTaskComplete = (id: string) => {
@@ -148,45 +150,137 @@ export default function SchedulerPage() {
     return p?.color || "bg-gray-500"
   }
 
-  const generateSchedule = () => {
-    // Simple auto-scheduling algorithm
-    const availableSlots: ScheduleSlot[] = []
-    const incompleteTasks = tasks.filter((task) => !task.completed)
-
-    weekDates.forEach((date) => {
-      timeSlots.forEach((time) => {
-        availableSlots.push({
-          date: date.toISOString().split("T")[0],
-          time,
-          task: null,
-          available: true,
-        })
-      })
-    })
-
-    // Sort tasks by priority and hours
-    const sortedTasks = [...incompleteTasks].sort((a, b) => {
-      const priorityOrder = { high: 3, medium: 2, low: 1 }
-      return priorityOrder[b.priority] - priorityOrder[a.priority]
-    })
-
-    let slotIndex = 0
-    sortedTasks.forEach((task) => {
-      const hoursNeeded = task.hours
-      let hoursScheduled = 0
-
-      while (hoursScheduled < hoursNeeded && slotIndex < availableSlots.length) {
-        if (availableSlots[slotIndex].available) {
-          availableSlots[slotIndex].task = task
-          availableSlots[slotIndex].available = false
-          hoursScheduled++
-        }
-        slotIndex++
-      }
-    })
-
-    setSchedule(availableSlots)
+  const setSpecificTime = (taskId: string, date: string, time: string) => {
+    setSpecificTimes(prev => ({
+      ...prev,
+      [taskId]: { date, time }
+    }))
+    specificTimeDialog.close()
   }
+
+  const removeSpecificTime = (taskId: string) => {
+    const newSpecificTimes = { ...specificTimes }
+    delete newSpecificTimes[taskId]
+    setSpecificTimes(newSpecificTimes)
+  }
+
+  const closeSpecificTimeDialog = useCallback(() => {
+    specificTimeDialog.close()
+  }, [specificTimeDialog])
+
+  // Clean up dialog state when tasks are deleted
+  useEffect(() => {
+    if (selectedTaskForTime && !tasks.find(task => task.id === selectedTaskForTime.id)) {
+      closeSpecificTimeDialog()
+    }
+  }, [tasks, selectedTaskForTime, closeSpecificTimeDialog])
+
+  // Prevent dialog from opening if task doesn't exist
+  const openSpecificTimeDialog = useCallback((task: Task) => {
+    if (tasks.find(t => t.id === task.id)) {
+      specificTimeDialog.open(task)
+    }
+  }, [tasks, specificTimeDialog])
+
+  const saveSpecificTime = () => {
+    if (selectedTaskForTime) {
+      setSpecificTimes(prev => ({
+        ...prev,
+        [selectedTaskForTime.id]: {
+          date: selectedTaskForTime.assigned_date,
+          time: specificTimes[selectedTaskForTime.id]?.time || "09:00"
+        }
+      }))
+    }
+    specificTimeDialog.close()
+  }
+
+  const generateSchedule = async () => {
+    const incompleteTasks = tasks.filter((task) => !task.completed);
+    if (incompleteTasks.length === 0) {
+      alert("No incomplete tasks to schedule!");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:5002/generate-schedule", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          tasks: incompleteTasks,
+          use_ai: false, // Use rule-based scheduling by default
+          specific_times: specificTimes
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate schedule from backend");
+      }
+
+      const result = await response.json();
+      console.log("Schedule generated:", result);
+
+      // The backend now returns a structured response
+      const generatedSchedule = result.schedule;
+      const method = result.method;
+      const totalTasks = result.total_tasks;
+      const totalHours = result.total_hours;
+
+      // Convert the backend schedule format to our frontend format
+      const formattedSchedule = generatedSchedule.map((item: any) => ({
+        date: item.date,
+        time: item.time,
+        task: {
+          id: Date.now().toString() + Math.random(), // Create a temporary ID
+          title: item.task_title,
+          hours: item.hours || 1, // Use the hours from backend or default to 1
+          category: item.category || "Scheduled",
+          priority: item.priority || "medium",
+          completed: false,
+          assigned_date: item.date,
+          specificTime: item.is_specific_time ? { date: item.date, time: item.time } : undefined
+        },
+        available: false,
+      }));
+
+      // Create a full schedule view with available slots
+      const fullSchedule: ScheduleSlot[] = [];
+      weekDates.forEach((date) => {
+        timeSlots.forEach((time) => {
+          const scheduledItem = formattedSchedule.find(
+            (item: any) =>
+              item.date === date.toISOString().split("T")[0] && item.time === time
+          );
+          if (scheduledItem) {
+            fullSchedule.push({
+              date: date.toISOString().split("T")[0],
+              time: scheduledItem.time,
+              task: scheduledItem.task,
+              available: false,
+            });
+          } else {
+            fullSchedule.push({
+              date: date.toISOString().split("T")[0],
+              time: time,
+              task: null,
+              available: true,
+            });
+          }
+        });
+      });
+
+      setSchedule(fullSchedule);
+      
+      // Show success message with method used
+      const specificTimeCount = result.specific_times_count || 0;
+      alert(`Schedule generated successfully using ${method} method!\nTotal tasks: ${totalTasks}\nTotal hours: ${totalHours}\nSpecific time preferences: ${specificTimeCount}`);
+    } catch (error) {
+      console.error("Error generating schedule:", error);
+      alert("There was an error generating the schedule. Please check the console.");
+    }
+  };
 
   const exportToCalendar = () => {
     // Simulate calendar export
@@ -230,7 +324,7 @@ export default function SchedulerPage() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Add New Task</DialogTitle>
-                    <DialogDescription>Create a new learning task with time estimate</DialogDescription>
+                    <DialogDescription>Create a new learning task with time estimate and assigned date</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="space-y-2">
@@ -252,6 +346,15 @@ export default function SchedulerPage() {
                         onChange={(e) => setNewTask({ ...newTask, hours: e.target.value })}
                         min="1"
                         max="20"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="task-date">Assigned Date</Label>
+                      <Input
+                        id="task-date"
+                        type="date"
+                        value={newTask.assigned_date}
+                        onChange={(e) => setNewTask({ ...newTask, assigned_date: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
@@ -321,11 +424,46 @@ export default function SchedulerPage() {
                             <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`}></div>
                             <span className="text-xs text-muted-foreground">{task.hours}h</span>
                           </div>
+                          <div className="flex items-center gap-1 mt-1">
+                            <CalendarDays className="w-3 h-3 text-gray-600" />
+                            <span className="text-xs text-gray-600">
+                              {new Date(task.assigned_date).toLocaleDateString()}
+                            </span>
+                          </div>
+                          {specificTimes[task.id] && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <CalendarDays className="w-3 h-3 text-blue-600" />
+                              <span className="text-xs text-blue-600">
+                                Fixed: {specificTimes[task.id].time}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4 p-0"
+                                onClick={() => removeSpecificTime(task.id)}
+                              >
+                                <Trash2 className="w-2 h-2" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 p-0" onClick={() => deleteTask(task.id)}>
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
+                      <div className="flex gap-1">
+                        {!task.completed && !specificTimes[task.id] && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 p-0"
+                            onClick={() => openSpecificTimeDialog(task)}
+                            title="Set specific time"
+                          >
+                            <Settings className="w-3 h-3" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0" onClick={() => deleteTask(task.id)}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -351,7 +489,7 @@ export default function SchedulerPage() {
               <CardTitle className="text-lg">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button onClick={generateSchedule} className="w-full" variant="outline">
+              <Button onClick={generateSchedule} className="w-full">
                 <Calendar className="w-4 h-4 mr-2" />
                 Auto Schedule
               </Button>
@@ -432,8 +570,8 @@ export default function SchedulerPage() {
 
                     {/* Time slots */}
                     {timeSlots.map((time) => (
-                      <>
-                        <div key={time} className="p-2 text-sm text-muted-foreground border-r">
+                      <React.Fragment key={time}>
+                        <div className="p-2 text-sm text-muted-foreground border-r">
                           {time}
                         </div>
                         {weekDates.map((date) => {
@@ -453,12 +591,18 @@ export default function SchedulerPage() {
                                   <Badge variant="secondary" className="text-xs mt-1">
                                     {slot.task.category}
                                   </Badge>
+                                  {slot.task.specificTime && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <CalendarDays className="w-2 h-2 text-blue-600" />
+                                      <span className="text-xs text-blue-600">Fixed</span>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
                           )
                         })}
-                      </>
+                      </React.Fragment>
                     ))}
                   </div>
                 </div>
@@ -467,6 +611,67 @@ export default function SchedulerPage() {
           </Card>
         </div>
       </div>
+
+      {/* Specific Time Dialog */}
+      {specificTimeDialog.isOpen && selectedTaskForTime && (
+        <Dialog open={specificTimeDialog.isOpen} onOpenChange={(open) => {
+          if (!open) {
+            closeSpecificTimeDialog()
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Set Specific Time for Task</DialogTitle>
+              <DialogDescription>
+                Choose a specific time for "{selectedTaskForTime.title}" on {selectedTaskForTime.assigned_date}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Time</Label>
+                <Select
+                  value={specificTimes[selectedTaskForTime.id]?.time || "09:00"}
+                  onValueChange={(value) => {
+                    setSpecificTimes(prev => ({
+                      ...prev,
+                      [selectedTaskForTime.id]: {
+                        date: selectedTaskForTime.assigned_date,
+                        time: value
+                      }
+                    }))
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeSlots.map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {time}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={saveSpecificTime}
+                  className="flex-1"
+                >
+                  Set Time
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={closeSpecificTimeDialog}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BookOpen, Bot, GraduationCap, Search, Wrench, Calendar, FileText, BarChart3 } from "lucide-react"
+import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs"
 
 export default function HomePage() {
   const features = [
@@ -75,14 +76,32 @@ export default function HomePage() {
             Bridge the gap between learning concepts and building real projects. Our AI-powered platform guides you from
             knowledge to creation.
           </p>
-          <div className="flex gap-4 justify-center flex-wrap">
-            <Button size="lg" asChild>
-              <Link href="/course-generator">Start Learning</Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link href="/ai-advisor">Get AI Guidance</Link>
-            </Button>
-          </div>
+          
+          <SignedIn>
+            <div className="flex gap-4 justify-center flex-wrap">
+              <Button size="lg" asChild>
+                <Link href="/course-generator">Start Learning</Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild>
+                <Link href="/ai-advisor">Get AI Guidance</Link>
+              </Button>
+            </div>
+          </SignedIn>
+          
+          <SignedOut>
+            <div className="flex gap-4 justify-center flex-wrap">
+              <SignUpButton mode="modal">
+                <Button size="lg">
+                  Get Started Free
+                </Button>
+              </SignUpButton>
+              <SignInButton mode="modal">
+                <Button size="lg" variant="outline">
+                  Sign In
+                </Button>
+              </SignInButton>
+            </div>
+          </SignedOut>
         </div>
       </section>
 
@@ -110,9 +129,18 @@ export default function HomePage() {
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="mb-4">{feature.description}</CardDescription>
-                  <Button asChild variant="outline" className="w-full">
-                    <Link href={feature.href}>Explore Tool</Link>
-                  </Button>
+                  <SignedIn>
+                    <Button asChild variant="outline" className="w-full">
+                      <Link href={feature.href}>Explore Tool</Link>
+                    </Button>
+                  </SignedIn>
+                  <SignedOut>
+                    <SignUpButton mode="modal">
+                      <Button variant="outline" className="w-full">
+                        Sign Up to Access
+                      </Button>
+                    </SignUpButton>
+                  </SignedOut>
                 </CardContent>
               </Card>
             ))}
@@ -153,6 +181,16 @@ export default function HomePage() {
               </p>
             </div>
           </div>
+          
+          <SignedOut>
+            <div className="mt-12">
+              <SignUpButton mode="modal">
+                <Button size="lg">
+                  Start Your Learning Journey
+                </Button>
+              </SignUpButton>
+            </div>
+          </SignedOut>
         </div>
       </section>
     </div>

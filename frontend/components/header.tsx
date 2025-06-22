@@ -15,6 +15,13 @@ import {
 } from "@/components/ui/navigation-menu"
 import { Menu, GraduationCap } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from "@clerk/nextjs"
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
@@ -87,6 +94,16 @@ export function Header() {
               </NavigationMenuLink>
             </NavigationMenuItem>
             <NavigationMenuItem>
+              <NavigationMenuLink asChild>
+                <Link
+                  href="/community"
+                  className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50"
+                >
+                  Community
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
               <NavigationMenuTrigger>DIY Tools</NavigationMenuTrigger>
               <NavigationMenuContent>
                 <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
@@ -112,6 +129,23 @@ export function Header() {
         <div className="flex items-center space-x-2">
           <LanguageSelector />
           <ModeToggle />
+          
+          {/* Clerk Authentication */}
+          <SignedOut>
+            <SignInButton mode="modal">
+              <Button variant="ghost" size="sm">
+                Sign In
+              </Button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <Button size="sm">
+                Sign Up
+              </Button>
+            </SignUpButton>
+          </SignedOut>
+          <SignedIn>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
 
           {/* Mobile Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -137,6 +171,9 @@ export function Header() {
                 <Link href="/library" className="text-lg font-medium" onClick={() => setIsOpen(false)}>
                   Library
                 </Link>
+                <Link href="/community" className="text-lg font-medium" onClick={() => setIsOpen(false)}>
+                  Community
+                </Link>
                 <div className="space-y-2">
                   <p className="text-lg font-medium">DIY Tools</p>
                   {diyTools.map((tool) => (
@@ -149,6 +186,29 @@ export function Header() {
                       {tool.name}
                     </Link>
                   ))}
+                </div>
+                
+                {/* Mobile Authentication */}
+                <div className="pt-4 border-t">
+                  <SignedOut>
+                    <div className="space-y-2">
+                      <SignInButton mode="modal">
+                        <Button variant="outline" className="w-full" onClick={() => setIsOpen(false)}>
+                          Sign In
+                        </Button>
+                      </SignInButton>
+                      <SignUpButton mode="modal">
+                        <Button className="w-full" onClick={() => setIsOpen(false)}>
+                          Sign Up
+                        </Button>
+                      </SignUpButton>
+                    </div>
+                  </SignedOut>
+                  <SignedIn>
+                    <div className="flex justify-center">
+                      <UserButton afterSignOutUrl="/" />
+                    </div>
+                  </SignedIn>
                 </div>
               </nav>
             </SheetContent>

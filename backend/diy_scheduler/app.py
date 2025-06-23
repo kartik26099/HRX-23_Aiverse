@@ -10,7 +10,12 @@ import random
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:3000",  # Keep for backward compatibility
+    "http://127.0.0.1:3000"   # Keep for backward compatibility
+])
 
 def generate_schedule_offline(tasks, specific_times=None):
     """Generate a schedule using intelligent rule-based logic"""

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Mic, MicOff, Volume2, VolumeX, HelpCircle } from 'lucide-react'
+import { Mic, MicOff, Volume2, VolumeX, HelpCircle, Sparkles } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 
@@ -198,16 +198,16 @@ export default function SpeechNavigation({ className = '' }: SpeechNavigationPro
           let errorMessage = 'Speech recognition error'
           switch (event.error) {
             case 'no-speech':
-              errorMessage = 'No speech detected. Please try again.'
+              errorMessage = 'No speech detected'
               break
             case 'audio-capture':
-              errorMessage = 'Microphone not found or not accessible.'
+              errorMessage = 'Microphone not found'
               break
             case 'not-allowed':
-              errorMessage = 'Microphone access denied. Please allow microphone access.'
+              errorMessage = 'Microphone access denied'
               break
             case 'network':
-              errorMessage = 'Network error. Please check your connection.'
+              errorMessage = 'Network error'
               break
             default:
               errorMessage = `Error: ${event.error}`
@@ -226,43 +226,32 @@ export default function SpeechNavigation({ className = '' }: SpeechNavigationPro
       }
     }
 
-    // Add keyboard shortcuts
+    // Keyboard shortcuts
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Ctrl/Cmd + Shift + M to toggle microphone
-      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'M') {
+      if (event.ctrlKey && event.key === 'k') {
         event.preventDefault()
         toggleListening()
-      }
-      
-      // Ctrl/Cmd + Shift + H to show help
-      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'H') {
-        event.preventDefault()
-        setShowHelp(!showHelp)
-      }
-      
-      // Escape to close help
-      if (event.key === 'Escape' && showHelp) {
-        setShowHelp(false)
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
-
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
     }
-  }, [pathname, showHelp])
+  }, [])
 
   const startListening = () => {
-    if (recognitionRef.current && isSupported) {
+    if (recognitionRef.current && !isListening) {
       try {
         recognitionRef.current.start()
         setIsListening(true)
         setTranscript('')
-        speakFeedback('Listening. Speak your command now.')
         toast({
           title: "Listening...",
-          description: "Speak your command now",
+          description: "Speak your command or say 'help' for available commands",
         })
       } catch (error) {
         console.error('Error starting speech recognition:', error)
@@ -272,12 +261,6 @@ export default function SpeechNavigation({ className = '' }: SpeechNavigationPro
           variant: "destructive",
         })
       }
-    } else {
-      toast({
-        title: "Not Supported",
-        description: "Speech recognition is not supported in this browser",
-        variant: "destructive",
-      })
     }
   }
 
@@ -285,101 +268,58 @@ export default function SpeechNavigation({ className = '' }: SpeechNavigationPro
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop()
       setIsListening(false)
-      speakFeedback('Stopped listening')
-      toast({
-        title: "Stopped Listening",
-        description: "Voice recognition stopped",
-      })
+      setTranscript('')
     }
   }
 
   const processCommand = (command: string) => {
     console.log('Processing command:', command)
-
+    
     // Check navigation commands
-    for (const [phrase, route] of Object.entries(navigationCommands)) {
-      if (command.includes(phrase)) {
-        speakFeedback(`Navigating to ${phrase}`)
-        router.push(route)
-        return
-      }
+    if (navigationCommands[command as keyof typeof navigationCommands]) {
+      const path = navigationCommands[command as keyof typeof navigationCommands]
+      router.push(path)
+      speakFeedback(`Navigating to ${command}`)
+      return
     }
-
+    
     // Check page-specific commands
     const pageCommands = getPageSpecificCommands()
-    for (const [phrase, action] of Object.entries(pageCommands)) {
-      if (command.includes(phrase)) {
-        action()
-        return
-      }
+    if (pageCommands[command as keyof typeof pageCommands]) {
+      pageCommands[command as keyof typeof pageCommands]()
+      return
     }
-
+    
     // Check action commands
-    for (const [phrase, action] of Object.entries(actionCommands)) {
-      if (command.includes(phrase)) {
-        speakFeedback(`Executing ${phrase}`)
-        action()
-        return
-      }
+    if (actionCommands[command as keyof typeof actionCommands]) {
+      actionCommands[command as keyof typeof actionCommands]()
+      return
     }
-
-    // Handle common variations
-    if (command.includes('click') || command.includes('press') || command.includes('select')) {
-      // Try to find buttons or links that match the command
-      const elements = document.querySelectorAll('button, a, [role="button"]')
-      for (const element of elements) {
-        const text = element.textContent?.toLowerCase() || ''
-        const ariaLabel = element.getAttribute('aria-label')?.toLowerCase() || ''
-        const title = element.getAttribute('title')?.toLowerCase() || ''
-        
-        const searchTerm = command.replace('click ', '').replace('press ', '').replace('select ', '')
-        if (text.includes(searchTerm) || ariaLabel.includes(searchTerm) || title.includes(searchTerm)) {
-          speakFeedback(`Clicking ${text}`)
-          ;(element as HTMLElement).click()
-          return
-        }
-      }
-    }
-
-    // If no command matched, provide feedback
-    speakFeedback(`Command not recognized: ${command}. Say "help" for available commands.`)
+    
+    // No command found
+    speakFeedback(`Command not recognized: ${command}. Say 'help' for available commands`)
   }
 
   const speakFeedback = (text: string) => {
     if ('speechSynthesis' in window) {
-      // Stop any ongoing speech
-      speechSynthesis.cancel()
-      
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.rate = 0.9
       utterance.pitch = 1
       utterance.volume = 0.8
+      
       setIsSpeaking(true)
+      utterance.onend = () => setIsSpeaking(false)
       
-      utterance.onend = () => {
-        setIsSpeaking(false)
-      }
-      
-      utterance.onerror = () => {
-        setIsSpeaking(false)
-      }
-      
-      speechSynthesis.speak(utterance)
+      window.speechSynthesis.speak(utterance)
     }
   }
 
   const speakHelp = () => {
-    const pageCommands = getPageSpecificCommands()
-    const pageSpecificHelp = Object.keys(pageCommands).length > 0 
-      ? `Page-specific commands: ${Object.keys(pageCommands).join(', ')}. `
-      : ''
-    
     const helpText = `
-      Available voice commands:
-      Navigation: Go home, go to scheduler, go to ai advisor, go to faculty, go to course generator, go to diy evaluator, go to diy generator, go to library, go to research helper, go to test translate.
-      Actions: Scroll up, scroll down, scroll to top, scroll to bottom, go back, go forward, refresh page, reload, stop listening, turn off microphone, help.
-      ${pageSpecificHelp}
-      You can also say "click" followed by any button or link text to interact with elements.
+      Available commands: 
+      Navigation: go home, go to scheduler, go to ai advisor
+      Actions: scroll up, scroll down, go back, go forward, refresh page, stop listening, help
+      Say 'help' anytime to hear this list again
     `
     speakFeedback(helpText)
   }
@@ -393,154 +333,80 @@ export default function SpeechNavigation({ className = '' }: SpeechNavigationPro
   }
 
   if (!isSupported) {
-    return null // Don't show the component if speech recognition is not supported
+    return null
   }
 
   return (
-    <>
-      {/* Screen reader announcements */}
-      <div 
-        aria-live="polite" 
-        aria-atomic="true" 
-        className="sr-only"
-        id="speech-announcements"
-      >
-        {isListening && "Listening for voice commands"}
-        {isSpeaking && "Speaking feedback"}
-        {transcript && `Heard: ${transcript}`}
-      </div>
-
-      <div className={`fixed bottom-4 right-4 z-50 ${className}`}>
-        <div className="flex flex-col items-end space-y-2">
-          {/* Status indicator */}
-          {isListening && (
-            <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm animate-pulse" role="status">
-              Listening...
-            </div>
-          )}
-          
-          {isSpeaking && (
-            <div className="bg-green-500 text-white px-3 py-1 rounded-full text-sm animate-pulse" role="status">
-              Speaking...
-            </div>
-          )}
-
-          {/* Transcript display */}
-          {transcript && (
-            <div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm max-w-xs" role="status">
-              "{transcript}"
-            </div>
-          )}
-
-          {/* Main microphone button */}
-          <Button
-            onClick={toggleListening}
-            size="lg"
-            className={`rounded-full w-14 h-14 shadow-lg transition-all duration-200 ${
-              isListening 
-                ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                : 'bg-blue-500 hover:bg-blue-600'
-            }`}
-            aria-label={isListening ? "Stop listening for voice commands" : "Start listening for voice commands"}
-            aria-pressed={isListening}
-            aria-describedby="speech-announcements"
-          >
-            {isListening ? (
-              <MicOff className="w-6 h-6 text-white" />
-            ) : (
-              <Mic className="w-6 h-6 text-white" />
-            )}
-          </Button>
-
-          {/* Help button */}
-          <Button
-            onClick={() => setShowHelp(!showHelp)}
-            size="sm"
-            variant="outline"
-            className="rounded-full w-10 h-10 shadow-lg bg-white/90 hover:bg-white"
-            aria-label="Voice commands help"
-            aria-expanded={showHelp}
-          >
-            <HelpCircle className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Help overlay */}
-      {showHelp && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="help-title"
+    <div className={`fixed bottom-4 right-4 z-50 ${className}`}>
+      <div className="flex flex-col items-end space-y-2">
+        {/* Help Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowHelp(!showHelp)}
+          className="ai-button hover:bg-ai-neural/10 hover:text-ai-neural transition-all duration-300"
         >
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <h3 id="help-title" className="text-lg font-semibold mb-4">Voice Commands Help</h3>
-            <div className="space-y-3 text-sm">
-              <div>
-                <h4 className="font-medium text-blue-600">Navigation:</h4>
-                <ul className="ml-4 space-y-1">
-                  <li>• "Go home" - Navigate to home page</li>
-                  <li>• "Go to scheduler" - Open DIY Scheduler</li>
-                  <li>• "Go to AI advisor" - Open AI Advisor</li>
-                  <li>• "Go to faculty" - Open AI Faculty</li>
-                  <li>• "Go to course generator" - Open Course Generator</li>
-                  <li>• "Go to library" - Open AI Library</li>
-                  <li>• "Go to research helper" - Open Research Helper</li>
-                </ul>
-              </div>
-              
-              <div>
-                <h4 className="font-medium text-green-600">Actions:</h4>
-                <ul className="ml-4 space-y-1">
-                  <li>• "Scroll up/down" - Scroll the page</li>
-                  <li>• "Go back/forward" - Browser navigation</li>
-                  <li>• "Refresh page" - Reload the page</li>
-                  <li>• "Stop listening" - Turn off microphone</li>
-                  <li>• "Help" - Show this help</li>
-                </ul>
-              </div>
+          <HelpCircle className="h-5 w-5" />
+        </Button>
 
-              {Object.keys(getPageSpecificCommands()).length > 0 && (
-                <div>
-                  <h4 className="font-medium text-purple-600">Page-Specific Commands:</h4>
-                  <ul className="ml-4 space-y-1">
-                    {Object.keys(getPageSpecificCommands()).map((cmd) => (
-                      <li key={cmd}>• "{cmd}"</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+        {/* Main Speech Button */}
+        <Button
+          onClick={toggleListening}
+          disabled={!isSupported}
+          className={`ai-button relative overflow-hidden transition-all duration-300 ${
+            isListening 
+              ? 'bg-gradient-to-r from-ai-error to-ai-warning text-white shadow-lg hover:shadow-xl animate-pulse-glow' 
+              : 'bg-gradient-to-r from-ai-primary to-ai-secondary text-white shadow-lg hover:shadow-xl hover:scale-110'
+          }`}
+        >
+          {isListening ? (
+            <>
+              <MicOff className="h-5 w-5" />
+              <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-white animate-pulse" />
+            </>
+          ) : (
+            <Mic className="h-5 w-5" />
+          )}
+        </Button>
 
-              <div>
-                <h4 className="font-medium text-orange-600">Keyboard Shortcuts:</h4>
-                <ul className="ml-4 space-y-1">
-                  <li>• <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Ctrl/Cmd + Shift + M</kbd> - Toggle microphone</li>
-                  <li>• <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Ctrl/Cmd + Shift + H</kbd> - Show/hide help</li>
-                  <li>• <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Escape</kbd> - Close help</li>
-                </ul>
-              </div>
+        {/* Volume Toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            if (isSpeaking) {
+              window.speechSynthesis.cancel()
+              setIsSpeaking(false)
+            }
+          }}
+          className={`ai-button transition-all duration-300 ${
+            isSpeaking 
+              ? 'bg-ai-quantum/10 text-ai-quantum animate-pulse' 
+              : 'hover:bg-ai-quantum/10 hover:text-ai-quantum'
+          }`}
+        >
+          {isSpeaking ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+        </Button>
 
-              <div>
-                <h4 className="font-medium text-orange-600">Tips:</h4>
-                <ul className="ml-4 space-y-1">
-                  <li>• Speak clearly and at a normal pace</li>
-                  <li>• Say "click" followed by button text to interact</li>
-                  <li>• Use "help" anytime to hear available commands</li>
-                  <li>• The microphone button pulses when listening</li>
-                </ul>
-              </div>
+        {/* Help Panel */}
+        {showHelp && (
+          <div className="bg-background/95 backdrop-blur-xl border border-border/50 rounded-lg p-4 shadow-xl max-w-sm animate-fade-in-up">
+            <h3 className="font-semibold text-ai-primary mb-2">Voice Commands</h3>
+            <div className="text-sm space-y-1 text-muted-foreground">
+              <p><strong>Navigation:</strong> "go home", "go to scheduler", "ai advisor"</p>
+              <p><strong>Actions:</strong> "scroll up", "scroll down", "help"</p>
+              <p><strong>Shortcut:</strong> Ctrl+K to toggle listening</p>
             </div>
-            
-            <Button
-              onClick={() => setShowHelp(false)}
-              className="w-full mt-4"
-            >
-              Close Help
-            </Button>
           </div>
-        </div>
-      )}
-    </>
+        )}
+
+        {/* Transcript Display */}
+        {transcript && (
+          <div className="bg-background/95 backdrop-blur-xl border border-border/50 rounded-lg p-3 shadow-lg max-w-xs animate-fade-in-up">
+            <p className="text-sm text-muted-foreground">Heard: "{transcript}"</p>
+          </div>
+        )}
+      </div>
+    </div>
   )
 } 

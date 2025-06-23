@@ -10,7 +10,12 @@ from roadmap_generator import generate_roadmap_logic
 
 # Initialize Flask app and enable CORS
 app = Flask(__name__)
-CORS(app)  # Allow all origins for development
+CORS(app, origins=[
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:3000",  # Keep for backward compatibility
+    "http://127.0.0.1:3000"   # Keep for backward compatibility
+])
 
 # Test route
 @app.route('/test', methods=['GET'])

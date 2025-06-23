@@ -37,6 +37,10 @@ import {
   Clock,
   BarChart3,
   ArrowRight,
+  Sparkles,
+  Target,
+  Brain,
+  Zap,
 } from "lucide-react"
 
 // Define the structure for course content
@@ -198,19 +202,18 @@ export default function CourseGeneratorPage() {
       }
 
       setCourses((prev) => [newCourse, ...prev])
-
-      toast({
-        title: "Course Generated Successfully!",
-        description: `"${newCourse.title}" has been added to your courses.`,
-      })
-
       setIsGenerateDialogOpen(false)
       setFormData({ title: "", level: "beginner", goal: "", currentState: "" })
-    } catch (error) {
-      console.error("Failed to generate course:", error)
+      
       toast({
-        title: "Course Generation Failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        title: "Course Generated!",
+        description: "Your personalized course has been created successfully.",
+      })
+    } catch (error) {
+      console.error("Error generating course:", error)
+      toast({
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       })
     } finally {
@@ -223,119 +226,159 @@ export default function CourseGeneratorPage() {
     if (course) {
       setSelectedCourse(course)
       setIsViewDialogOpen(true)
-    } else {
-      toast({
-        title: "Course Not Found",
-        description: "The selected course could not be found.",
-        variant: "destructive",
-      })
+    }
+  }
+
+  const getLevelColor = (level: string) => {
+    switch (level.toLowerCase()) {
+      case "beginner":
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+      case "intermediate":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800"
+      case "advanced":
+        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 border-red-200 dark:border-red-800"
+      default:
+        return "bg-slate-100 text-slate-800 dark:bg-slate-900/20 dark:text-slate-400 border-slate-200 dark:border-slate-800"
     }
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-background text-foreground">
-      {/* Sidebar */}
-      <aside className="w-64 flex-col border-r bg-muted/40 p-6 hidden lg:flex">
-        <h2 className="text-lg font-semibold mb-4">Filters</h2>
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-sm font-medium mb-2">Experience Level</h3>
-            <div className="space-y-2">
-              <Button variant="ghost" className="w-full justify-start">All Levels</Button>
-              <Button variant="ghost" className="w-full justify-start">Beginner</Button>
-              <Button variant="ghost" className="w-full justify-start">Intermediate</Button>
-              <Button variant="ghost" className="w-full justify-start">Advanced</Button>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50/30 to-pink-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+      <div className="container mx-auto px-6 py-8">
+        {/* Header Section */}
+        <div className="text-center mb-12">
+          <div className="flex items-center justify-center space-x-3 mb-6">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <Sparkles className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                AI Course Generator
+              </h1>
+              <p className="text-lg text-slate-600 dark:text-slate-400 mt-2">
+                Create personalized learning paths tailored to your goals
+              </p>
             </div>
           </div>
-          <div>
-            <h3 className="text-sm font-medium mb-2">Duration</h3>
-            <div className="space-y-2">
-              <Button variant="ghost" className="w-full justify-start">Any Duration</Button>
-              <Button variant="ghost" className="w-full justify-start">Short (&le; 4 weeks)</Button>
-              <Button variant="ghost" className="w-full justify-start">Medium (5-8 weeks)</Button>
-              <Button variant="ghost" className="w-full justify-start">Long (&gt; 8 weeks)</Button>
-            </div>
+          
+          <div className="max-w-3xl mx-auto">
+            <p className="text-xl text-slate-700 dark:text-slate-300 leading-relaxed">
+              Transform your learning goals into structured, comprehensive courses with AI-powered curriculum design. 
+              Get personalized modules, learning objectives, and recommended resources.
+            </p>
           </div>
         </div>
-      </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight">AI CourseGen</h1>
-            <p className="text-muted-foreground mt-2">Discover and generate personalized learning paths</p>
-          </div>
+        {/* Generate Course Button */}
+        <div className="text-center mb-12">
           <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="lg">
-                <PlusIcon className="mr-2 h-5 w-5" />
-                Generate Course
+              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-6 text-lg font-semibold group">
+                <Sparkles className="mr-3 h-6 w-6 group-hover:rotate-12 transition-transform" />
+                Generate New Course
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[480px]">
+            <DialogContent className="max-w-2xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700">
               <DialogHeader>
-                <DialogTitle className="text-2xl">Generate Custom Course</DialogTitle>
-                <DialogDescription>
-                  Describe your learning objectives, and our AI will craft a course just for you.
+                <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-3">
+                  <Brain className="h-6 w-6 text-blue-600" />
+                  <span>Generate Personalized Course</span>
+                </DialogTitle>
+                <DialogDescription className="text-slate-600 dark:text-slate-400 text-base">
+                  Tell us about your learning goals and current knowledge level to create a tailored course.
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleGenerateCourse}>
-                <div className="grid gap-6 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="course-title">Course Title</Label>
+              
+              <form onSubmit={handleGenerateCourse} className="space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="title" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      Course Topic
+                    </Label>
                     <Input
-                      id="course-title"
-                      placeholder="e.g., Introduction to Python"
+                      id="title"
+                      placeholder="e.g., Machine Learning, Web Development, Data Science"
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="mt-2 border-2 border-slate-200 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Experience Level</Label>
+                  
+                  <div>
+                    <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Experience Level</Label>
                     <RadioGroup
                       value={formData.level}
                       onValueChange={(value) => setFormData({ ...formData, level: value })}
-                      className="flex space-x-4"
+                      className="mt-2 space-y-3"
                     >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="beginner" id="beginner" />
-                        <Label htmlFor="beginner">Beginner</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="intermediate" id="intermediate" />
-                        <Label htmlFor="intermediate">Intermediate</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="advanced" id="advanced" />
-                        <Label htmlFor="advanced">Advanced</Label>
-                      </div>
+                      {[
+                        { value: "beginner", label: "Beginner", description: "New to the topic" },
+                        { value: "intermediate", label: "Intermediate", description: "Some experience" },
+                        { value: "advanced", label: "Advanced", description: "Experienced learner" },
+                      ].map((level) => (
+                        <div key={level.value} className="flex items-center space-x-3">
+                          <RadioGroupItem value={level.value} id={level.value} />
+                          <Label htmlFor={level.value} className="flex flex-col cursor-pointer">
+                            <span className="font-medium text-slate-800 dark:text-slate-200">{level.label}</span>
+                            <span className="text-sm text-slate-600 dark:text-slate-400">{level.description}</span>
+                          </Label>
+                        </div>
+                      ))}
                     </RadioGroup>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="learning-goal">Learning Goal</Label>
+                  
+                  <div>
+                    <Label htmlFor="goal" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      Learning Goal
+                    </Label>
                     <Textarea
-                      id="learning-goal"
-                      placeholder="What do you want to achieve with this course?"
-                      rows={3}
+                      id="goal"
+                      placeholder="What do you want to achieve? What skills do you want to develop?"
                       value={formData.goal}
                       onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                      className="mt-2 border-2 border-slate-200 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400 min-h-[100px]"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="current-knowledge">Current Knowledge</Label>
+                  
+                  <div>
+                    <Label htmlFor="currentState" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      Current Knowledge
+                    </Label>
                     <Textarea
-                      id="current-knowledge"
-                      placeholder="What do you already know about this subject?"
-                      rows={3}
+                      id="currentState"
+                      placeholder="What do you already know about this topic? Any specific areas you want to focus on?"
                       value={formData.currentState}
                       onChange={(e) => setFormData({ ...formData, currentState: e.target.value })}
+                      className="mt-2 border-2 border-slate-200 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400 min-h-[100px]"
                     />
                   </div>
                 </div>
+                
                 <DialogFooter>
-                  <Button type="submit" disabled={isGenerating} className="w-full">
-                    {isGenerating ? "Generating..." : "Generate Course"}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsGenerateDialogOpen(false)}
+                    className="border-2 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isGenerating}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2 h-4 w-4" />
+                        Generate Course
+                      </>
+                    )}
                   </Button>
                 </DialogFooter>
               </form>
@@ -343,101 +386,233 @@ export default function CourseGeneratorPage() {
           </Dialog>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative mb-8">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <Input placeholder="Search courses..." className="pl-10 h-12 text-base" />
-        </div>
-
-        {/* Course Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {/* Courses Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {courses.map((course) => (
-            <Card key={course.id} className="flex flex-col hover:shadow-xl transition-shadow duration-300">
-              <CardHeader>
-                <CardTitle>{course.title}</CardTitle>
-                <CardDescription>{course.description}</CardDescription>
+            <Card key={course.id} className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <BookOpen className="h-6 w-6 text-white" />
+                  </div>
+                  <Badge className={`border-2 ${getLevelColor(course.level)}`}>
+                    {course.level}
+                  </Badge>
+                </div>
+                <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">
+                  {course.title}
+                </CardTitle>
+                <CardDescription className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
+                  {course.description}
+                </CardDescription>
               </CardHeader>
-              <CardContent className="flex-grow">
-                <div className="flex space-x-2">
-                  <Badge variant="secondary">{course.level}</Badge>
-                  <Badge variant="outline">{course.duration}</Badge>
+              
+              <CardContent className="pt-0">
+                <div className="flex items-center space-x-4 mb-4 text-sm text-slate-600 dark:text-slate-400">
+                  <div className="flex items-center space-x-1">
+                    <Clock className="h-4 w-4" />
+                    <span>{course.duration}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <FileText className="h-4 w-4" />
+                    <span>{course.modules.length} modules</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2 mb-6">
+                  <h4 className="font-semibold text-slate-800 dark:text-slate-200 flex items-center space-x-2">
+                    <Target className="h-4 w-4 text-blue-600" />
+                    <span>Learning Objectives</span>
+                  </h4>
+                  <ul className="space-y-1">
+                    {course.learning_objectives.slice(0, 3).map((objective, index) => (
+                      <li key={index} className="flex items-start space-x-2 text-sm text-slate-600 dark:text-slate-400">
+                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span>{objective}</span>
+                      </li>
+                    ))}
+                    {course.learning_objectives.length > 3 && (
+                      <li className="text-sm text-slate-500 dark:text-slate-500 italic">
+                        +{course.learning_objectives.length - 3} more objectives
+                      </li>
+                    )}
+                  </ul>
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button className="w-full" onClick={() => handleViewCourse(course.id)}>
-                  View Course <ArrowRight className="ml-2 h-4 w-4" />
+              
+              <CardFooter className="pt-0">
+                <Button
+                  onClick={() => handleViewCourse(course.id)}
+                  className="w-full bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 group"
+                >
+                  <span>View Course Details</span>
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </CardFooter>
             </Card>
           ))}
         </div>
 
-        {/* View Course Details Dialog */}
-        {selectedCourse && (
-          <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-            <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0">
-              <DialogHeader className="p-6 pb-4">
-                <DialogTitle className="text-3xl font-bold tracking-tight">{selectedCourse.title}</DialogTitle>
-                <DialogDescription className="pt-2 text-base">{selectedCourse.description}</DialogDescription>
-                <div className="flex items-center space-x-4 text-sm text-muted-foreground pt-3">
-                  <div className="flex items-center"><BarChart3 className="mr-1.5 h-4 w-4" /> {selectedCourse.level}</div>
-                  <div className="flex items-center"><Clock className="mr-1.5 h-4 w-4" /> {selectedCourse.duration}</div>
-                  <div className="flex items-center"><BookOpen className="mr-1.5 h-4 w-4" /> {selectedCourse.modules.length} Modules</div>
-                </div>
-              </DialogHeader>
-              <div className="flex-grow overflow-y-auto px-6 pb-6">
-                <div className="mb-6 bg-muted/50 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-3">What You'll Learn</h3>
-                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-                    {selectedCourse.learning_objectives.map((obj, index) => (
-                      <li key={index} className="flex items-start text-sm">
-                        <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                        <span>{obj}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+        {/* Course Details Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700">
+            {selectedCourse && (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-3">
+                    <BookOpen className="h-6 w-6 text-blue-600" />
+                    <span>{selectedCourse.title}</span>
+                  </DialogTitle>
+                  <DialogDescription className="text-slate-600 dark:text-slate-400 text-base">
+                    {selectedCourse.description}
+                  </DialogDescription>
+                </DialogHeader>
                 
-                <h3 className="text-xl font-semibold mb-4">Course Content</h3>
-                <div className="space-y-4">
-                  {selectedCourse.modules.map((module, index) => (
-                    <div key={index} className="border rounded-lg overflow-hidden">
-                      <div className="bg-muted/50 p-4">
-                        <h4 className="text-lg font-semibold">{`Module ${index + 1}: ${module.title}`}</h4>
-                        <p className="text-sm text-muted-foreground mt-1">{module.description}</p>
+                <div className="space-y-6">
+                  {/* Course Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Clock className="h-5 w-5 text-blue-600" />
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">Duration</span>
                       </div>
-                      <div className="p-4 space-y-2">
-                        {module.subsections.map((subsection, subIndex) => (
-                          <div key={subIndex} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted transition-colors cursor-pointer">
-                            <FileText className="h-5 w-5 text-primary flex-shrink-0" />
-                            <div className="flex-grow">
-                              <p className="font-medium">{subsection.title}</p>
-                            </div>
-                            <span className="text-sm text-muted-foreground">{subsection.duration}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {module.recommended_videos && module.recommended_videos.length > 0 && (
-                        <div className="border-t p-4">
-                          <h4 className="font-semibold mb-2 flex items-center"><Video className="mr-2 h-5 w-5" />Recommended Videos</h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {module.recommended_videos.map((video, videoIndex) => (
-                              <a href={video.link} target="_blank" rel="noopener noreferrer" key={videoIndex} className="block p-2 border rounded-lg hover:bg-muted transition-colors text-sm">
-                                <p className="font-semibold truncate">{video.title}</p>
-                                <p className="text-xs text-muted-foreground">{video.channel}</p>
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <p className="text-slate-600 dark:text-slate-400">{selectedCourse.duration}</p>
                     </div>
-                  ))}
+                    <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <BarChart3 className="h-5 w-5 text-purple-600" />
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">Level</span>
+                      </div>
+                      <Badge className={`border-2 ${getLevelColor(selectedCourse.level)}`}>
+                        {selectedCourse.level}
+                      </Badge>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <FileText className="h-5 w-5 text-green-600" />
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">Modules</span>
+                      </div>
+                      <p className="text-slate-600 dark:text-slate-400">{selectedCourse.modules.length} modules</p>
+                    </div>
+                  </div>
+
+                  {/* Learning Objectives */}
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-2">
+                      <Target className="h-5 w-5 text-blue-600" />
+                      <span>Learning Objectives</span>
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {selectedCourse.learning_objectives.map((objective, index) => (
+                        <div key={index} className="flex items-start space-x-3 bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
+                          <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-slate-700 dark:text-slate-300">{objective}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Modules */}
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-2">
+                      <FileText className="h-5 w-5 text-purple-600" />
+                      <span>Course Modules</span>
+                    </h3>
+                    <div className="space-y-4">
+                      {selectedCourse.modules.map((module, moduleIndex) => (
+                        <Card key={moduleIndex} className="border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700">
+                          <CardHeader>
+                            <CardTitle className="text-lg text-slate-800 dark:text-slate-200">
+                              Module {moduleIndex + 1}: {module.title}
+                            </CardTitle>
+                            <CardDescription className="text-slate-600 dark:text-slate-400">
+                              {module.description}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-3">
+                              {module.subsections.map((subsection, subsectionIndex) => (
+                                <div key={subsectionIndex} className="flex items-start space-x-3 bg-white dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
+                                  <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <span className="text-white text-xs font-bold">{subsectionIndex + 1}</span>
+                                  </div>
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                                      {subsection.title}
+                                    </h4>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                                      {subsection.content}
+                                    </p>
+                                    {subsection.duration && (
+                                      <div className="flex items-center space-x-1 text-xs text-slate-500 dark:text-slate-500">
+                                        <Clock className="h-3 w-3" />
+                                        <span>{subsection.duration}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {/* Module Videos */}
+                            {module.recommended_videos && module.recommended_videos.length > 0 && (
+                              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+                                <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                                  <Video className="h-4 w-4 text-red-600" />
+                                  <span>Recommended Videos</span>
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {module.recommended_videos.map((video, videoIndex) => (
+                                    <Card key={videoIndex} className="border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
+                                      <CardContent className="p-3">
+                                        <div className="space-y-2">
+                                          <div className="flex items-start justify-between">
+                                            <h5 className="text-sm font-medium text-slate-800 dark:text-slate-200 line-clamp-2">
+                                              {video.title}
+                                            </h5>
+                                          </div>
+                                          <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-400">
+                                            <span className="font-medium">{video.channel}</span>
+                                            {video.duration && (
+                                              <>
+                                                <span>•</span>
+                                                <span>{video.duration}</span>
+                                              </>
+                                            )}
+                                          </div>
+                                          <a
+                                            href={video.link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block w-full"
+                                          >
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm" 
+                                              className="w-full text-xs border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500"
+                                            >
+                                              <Video className="h-3 w-3 mr-1" />
+                                              Watch Video
+                                            </Button>
+                                          </a>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-      </main>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   )
 }

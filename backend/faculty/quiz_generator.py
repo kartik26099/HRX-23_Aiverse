@@ -6,13 +6,37 @@ from db_setup import SessionLocal, Document, DocumentChunk
 from document_processor import generate_embedding, cosine_similarity
 import os
 from dotenv import load_dotenv
+import requests
+import time
+import google.generativeai as genai
 
 # Load environment variables
 load_dotenv()
 
-# Groq setup
-from groq import Groq
-groq_client = Groq(api_key="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")
+# OpenRouter setup (same as DIY evaluator)
+API_URL = os.getenv("LLM_API_URL", "https://openrouter.ai/api/v1/chat/completions")
+API_KEY = os.getenv("LLM_API_KEY", "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")
+MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/llama-3.1-8b-instruct:free")
+
+# Load Gemini API key
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+        print("Gemini model for topic extraction initialized successfully.")
+    except Exception as e:
+        print(f"Error configuring Gemini API: {str(e)}")
+        gemini_model = None
+else:
+    gemini_model = None
+
+HEADERS = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json",
+    "HTTP-Referer": "http://localhost:8000",
+    "X-Title": "AI Faculty"
+}
 
 class QuizQuestion(BaseModel):
     question: str
@@ -78,40 +102,66 @@ def parse_llm_json(text: str, max_attempts: int = 3) -> any:
     raise ValueError("Failed to parse JSON from LLM output")
 
 def extract_topics_from_text(text: str) -> List[str]:
-    """Extract topics from text using Groq with improved prompting."""
-    system_prompt = """You are an expert at identifying educational topics in text.
-    Extract 3-5 main topics that would be suitable for quiz generation.
-    Return only a JSON array of topic strings."""
-    
-    user_prompt = f"""Analyze this text and identify 3-5 main educational topics:
+    """Extract topics from text using OpenRouter first, fallback to Gemini if needed."""
+    system_prompt = "You are an expert at identifying educational topics in text. Extract 3-5 main topics that would be suitable for quiz generation. Return only a JSON array of topic strings."
+    user_prompt = f"""Analyze this text and identify 3-5 main educational topics:\n\n{text[:3000]}\n\nReturn only a JSON array of strings representing the main topics. Example: [\"Topic 1\", \"Topic 2\", \"Topic 3\"]"""
 
-{text[:3000]}
+    # Try OpenRouter first
+    max_retries = 5
+    base_delay = 3
+    for attempt in range(max_retries):
+        try:
+            data = {
+                "model": MODEL_NAME,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens":800,
+                "response_format": {"type": "json_object"}
+            }
+            response = requests.post(API_URL, headers=HEADERS, json=data)
+            if response.status_code == 429:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    print(f"[extract_topics_from_text] Rate limited, waiting {delay}s before retry {attempt+1}")
+                    time.sleep(delay)
+                    continue
+                else:
+                    print("[extract_topics_from_text] All retries failed due to rate limiting. Falling back to Gemini.")
+                    break
+            response.raise_for_status()
+            result = response.json()
+            response_text = result["choices"][0]["message"]["content"]
+            topics_data = parse_llm_json(response_text)
+            if isinstance(topics_data, list) and all(isinstance(t, str) for t in topics_data):
+                print("[extract_topics_from_text] Used OpenRouter for topic extraction.")
+                return topics_data
+            else:
+                print("Topic extraction returned invalid format")
+                return ["General Knowledge"]
+        except Exception as e:
+            print(f"[extract_topics_from_text] Attempt {attempt+1}: {str(e)}")
+            if attempt == max_retries - 1:
+                print("[extract_topics_from_text] All retries failed. Falling back to Gemini.")
+            time.sleep(base_delay * (2 ** attempt))
 
-Return only a JSON array of strings representing the main topics.
-Example: ["Topic 1", "Topic 2", "Topic 3"]"""
-    
-    try:
-        chat_completion = groq_client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            model="llama-3.3-70b-versatile",
-            response_format={"type": "json_object"}
-        )
-        
-        response_text = chat_completion.choices[0].message.content
-        topics_data = parse_llm_json(response_text)
-        
-        if isinstance(topics_data, list) and all(isinstance(t, str) for t in topics_data):
-            return topics_data
-        else:
-            print("Topic extraction returned invalid format")
-            return ["General Knowledge"]
-            
-    except Exception as e:
-        print(f"Error extracting topics: {str(e)}")
-        return ["General Knowledge"]
+    # Fallback to Gemini if OpenRouter fails
+    if gemini_model:
+        try:
+            gemini_prompt = f"You are an expert at identifying educational topics in text. Extract 3-5 main topics that would be suitable for quiz generation. Return only a JSON array of topic strings.\n\n{text[:3000]}\n\nReturn only a JSON array of strings representing the main topics. Example: [\"Topic 1\", \"Topic 2\", \"Topic 3\"]"
+            response = gemini_model.generate_content(gemini_prompt)
+            cleaned = response.text.strip().replace("```json", "").replace("```", "")
+            topics_data = json.loads(cleaned)
+            if isinstance(topics_data, list) and all(isinstance(t, str) for t in topics_data):
+                print("[extract_topics_from_text] Used Gemini for topic extraction.")
+                return topics_data
+            else:
+                print("[extract_topics_from_text] Gemini returned invalid format. Returning fallback topic.")
+        except Exception as e:
+            print(f"[extract_topics_from_text] Gemini error: {str(e)}. Returning fallback topic.")
+    return ["General Knowledge"]
 
 def repair_json(text: str) -> str:
     """Attempt to repair malformed JSON."""
@@ -129,56 +179,15 @@ def repair_json(text: str) -> str:
     return text
 
 def generate_questions(topic: str, context: str, n: int) -> List[QuizQuestion]:
-    """Generate quiz questions using Groq LLM with improved prompting for JSON output."""
-    system_prompt = """You are an expert quiz generator. 
-    You create clear, concise multiple-choice questions with exactly 4 options per question.
-    Always ensure:
-    1. Questions are directly answerable from the provided context
-    2. One and only one option is correct
-    3. All options are plausible but distinct
-    4. The correct_index is 0-based (0, 1, 2, or 3)
-    5. Output is valid RFC8259 compliant JSON with no additional text
-    6. Each question has a relevant topic field
-    
-    """
-
-    user_prompt = f"""Generate {n} medium-difficulty multiple-choice questions about '{topic}' based on this content:
-
-    {context}
-
-    Format your response as a JSON array of objects with these exact keys:
-    - question: The question text
-    - options: Array of 4 possible answers
-    - correct_index: Integer index (0-3) of the correct answer
-    - topic: "{topic}"
-
-    """
-
-    for attempt in range(3):  # Try up to 3 times
+    """Generate quiz questions using Gemini as primary, fallback to OpenRouter if needed."""
+    if gemini_model:
         try:
-            chat_completion = groq_client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                model="llama-3.3-70b-versatile",
-                response_format={"type": "json_object"}  # Enforce JSON output
-            )
-            
-            response_text = chat_completion.choices[0].message.content
-            # Attempt to parse JSON with repair mechanisms
-            try:
-                extracted_text = extract_json_from_markdown(response_text)
-                questions_data = json.loads(extracted_text)
-            except json.JSONDecodeError:
-                repaired_text = repair_json(response_text)
-                questions_data = json.loads(repaired_text)
-            
-            # If we got a dict instead of a list, wrap it in a list
+            gemini_prompt = f"You are an expert quiz generator. Create {n} multiple-choice questions (with exactly 4 options each) about '{topic}' based on this content:\n\n{context}\n\nRespond ONLY with a JSON array of objects. Each object must have: question, options (array of 4), correct_index (0-3), topic. Example: [{{'question': '...', 'options': ['A','B','C','D'], 'correct_index': 1, 'topic': '{topic}'}}]"
+            response = gemini_model.generate_content(gemini_prompt)
+            cleaned = response.text.strip().replace("```json", "").replace("```", "")
+            questions_data = json.loads(cleaned)
             if isinstance(questions_data, dict):
                 questions_data = [questions_data]
-            
-            # Validate the structure of each question
             validated_questions = []
             for q in questions_data:
                 if (isinstance(q, dict) and 
@@ -191,66 +200,166 @@ def generate_questions(topic: str, context: str, n: int) -> List[QuizQuestion]:
                     isinstance(q["correct_index"], int) and
                     0 <= q["correct_index"] <= 3):
                     validated_questions.append(QuizQuestion(**q))
-            
             if validated_questions:
+                print("[generate_questions] Used Gemini for question generation.")
                 return validated_questions
-            
-            # If we got here, validation failed
-            print(f"Attempt {attempt+1}: Generated questions failed validation")
-            
-        except json.JSONDecodeError as jde:
-            print(f"Attempt {attempt+1} JSON parsing error: {str(jde)}")
+            else:
+                print("[generate_questions] Gemini returned invalid format. Falling back to OpenRouter.")
         except Exception as e:
-            error_str = str(e)
-            print(f"Attempt {attempt+1} error: {error_str}")
-            # Check if it's a 400 error with failed_generation content
-            if "400" in error_str and "failed_generation" in error_str:
-                try:
-                    # Extract the failed_generation part from the error message
-                    start_idx = error_str.find("'failed_generation':") + len("'failed_generation':")
-                    end_idx = error_str.rfind("}")
-                    if start_idx > len("'failed_generation':") and end_idx > start_idx:
-                        failed_gen_text = error_str[start_idx:end_idx+1].strip().strip("'").strip()
-                        # Attempt to parse the failed_generation as JSON
-                        failed_gen_data = json.loads(failed_gen_text) if failed_gen_text else {}
-                        # Check if it contains usable question data
-                        if isinstance(failed_gen_data, list):
-                            questions_data = failed_gen_data
-                        elif isinstance(failed_gen_data, dict) and any(key in failed_gen_data for key in ["question", "options"]):
-                            questions_data = [failed_gen_data]
-                        else:
-                            # If no direct question data, look for nested structures
-                            questions_data = []
-                            for key, value in failed_gen_data.items():
-                                if isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict):
-                                    questions_data.extend(value)
-                        
-                        validated_questions = []
-                        for q in questions_data:
-                            if (isinstance(q, dict) and 
-                                "question" in q and 
-                                "options" in q and 
-                                "correct_index" in q and 
-                                "topic" in q and
-                                isinstance(q["options"], list) and
-                                len(q["options"]) == 4 and
-                                isinstance(q["correct_index"], int) and
-                                0 <= q["correct_index"] <= 3):
-                                validated_questions.append(QuizQuestion(**q))
-                        
-                        if validated_questions:
-                            print(f"Extracted {len(validated_questions)} questions from failed_generation in error response")
-                            return validated_questions
-                        
-                        print(f"Attempt {attempt+1}: No valid questions found in failed_generation")
-                except json.JSONDecodeError as jde2:
-                    print(f"Attempt {attempt+1}: Failed to parse failed_generation content - {str(jde2)}")
-                except Exception as e2:
-                    print(f"Attempt {attempt+1}: Error processing failed_generation - {str(e2)}")
-    
-    print("All attempts to generate questions failed")
-    return []
+            print(f"[generate_questions] Gemini error: {str(e)}. Falling back to OpenRouter.")
 
+    # Fallback to OpenRouter if Gemini fails
+    system_prompt = """You are an expert quiz generator. \nYou create clear, concise multiple-choice questions with exactly 4 options per question.\nAlways ensure:\n1. Questions are directly answerable from the provided context\n2. One and only one option is correct\n3. All options are plausible but distinct\n4. The correct_index is 0-based (0, 1, 2, or 3)\n5. Output is valid RFC8259 compliant JSON with no additional text\n6. Each question has a relevant topic field\n"""
+    user_prompt = f"""Generate {n} medium-difficulty multiple-choice questions about '{topic}' based on this content:\n\n    {context}\n\n    Format your response as a JSON array of objects with these exact keys:\n    - question: The question text\n    - options: Array of 4 possible answers\n    - correct_index: Integer index (0-3) of the correct answer\n    - topic: \"{topic}\"\n    """
+    max_retries = 5
+    base_delay = 3
+    for attempt in range(max_retries):
+        try:
+            data = {
+                "model": MODEL_NAME,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 1000,
+                "response_format": {"type": "json_object"}
+            }
+            response = requests.post(API_URL, headers=HEADERS, json=data)
+            if response.status_code == 429:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    print(f"[generate_questions] Rate limited, waiting {delay}s before retry {attempt+1}")
+                    time.sleep(delay)
+                    continue
+                else:
+                    print("[generate_questions] All retries failed due to rate limiting. Returning fallback question.")
+                    break
+            response.raise_for_status()
+            result = response.json()
+            response_text = result["choices"][0]["message"]["content"]
+            try:
+                extracted_text = extract_json_from_markdown(response_text)
+                questions_data = json.loads(extracted_text)
+            except json.JSONDecodeError:
+                repaired_text = repair_json(response_text)
+                questions_data = json.loads(repaired_text)
+            if isinstance(questions_data, dict):
+                questions_data = [questions_data]
+            validated_questions = []
+            for q in questions_data:
+                if (isinstance(q, dict) and 
+                    "question" in q and 
+                    "options" in q and 
+                    "correct_index" in q and 
+                    "topic" in q and
+                    isinstance(q["options"], list) and
+                    len(q["options"]) == 4 and
+                    isinstance(q["correct_index"], int) and
+                    0 <= q["correct_index"] <= 3):
+                    validated_questions.append(QuizQuestion(**q))
+            if validated_questions:
+                print("[generate_questions] Used OpenRouter for question generation.")
+                return validated_questions
+            print(f"[generate_questions] Attempt {attempt+1}: Generated questions failed validation")
+        except Exception as e:
+            print(f"[generate_questions] Attempt {attempt+1}: {str(e)}")
+            if attempt == max_retries - 1:
+                print("[generate_questions] All retries failed. Returning fallback question.")
+            time.sleep(base_delay * (2 ** attempt))
+    # If all attempts failed, return a fallback question
+    return [QuizQuestion(
+        question=f"What is the main concept of {topic}?",
+        options=["Concept A", "Concept B", "Concept C", "Concept D"],
+        correct_index=0,
+        topic=topic
+    )]
+
+def generate_detailed_explanation(question: str, correct_answer: str, user_answer: str, is_correct: bool, topic: str, doc_id: int = None) -> str:
+    """Generate detailed explanation for quiz questions using OpenRouter."""
+    
+    # Get document context if available
+    context = ""
+    if doc_id:
+        try:
+            db = SessionLocal()
+            document = db.query(Document).filter(Document.id == doc_id).first()
+            if document:
+                # Get relevant chunks for context
+                chunks = db.query(DocumentChunk).filter(DocumentChunk.document_id == doc_id).limit(3).all()
+                context = "\n".join([chunk.content for chunk in chunks])
+        except Exception as e:
+            print(f"Error getting document context: {str(e)}")
+        finally:
+            db.close()
+    
+    system_prompt = """You are an expert educator providing detailed explanations for quiz questions.
+    Your explanations should be:
+    1. Clear and educational
+    2. Helpful for learning
+    3. Specific to the question and topic
+    4. Encouraging and constructive
+    
+    If the answer is incorrect, explain why the chosen answer is wrong and why the correct answer is right.
+    If the answer is correct, provide additional context and reinforcement.
+    """
+    
+    user_prompt = f"""Question: {question}
+Topic: {topic}
+Correct Answer: {correct_answer}
+User's Answer: {user_answer}
+Is Correct: {'Yes' if is_correct else 'No'}
+
+{f'Document Context: {context[:1000]}' if context else ''}
+
+Please provide a detailed explanation that helps the student understand the concept better."""
+
+    # Try multiple times with exponential backoff for rate limiting
+    max_retries = 3
+    base_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            data = {
+                "model": MODEL_NAME,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 300
+            }
+            
+            response = requests.post(API_URL, headers=HEADERS, json=data)
+            
+            # Handle rate limiting
+            if response.status_code == 429:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)  # Exponential backoff
+                    print(f"Rate limited, waiting {delay} seconds before retry {attempt + 1}")
+                    time.sleep(delay)
+                    continue
+                else:
+                    # If all retries failed, return a fallback explanation
+                    return generate_fallback_explanation(question, correct_answer, user_answer, is_correct, topic)
+            
+            response.raise_for_status()
+            result = response.json()
+            
+            return result["choices"][0]["message"]["content"].strip()
+            
+        except Exception as e:
+            print(f"Error generating explanation (attempt {attempt + 1}): {str(e)}")
+            if attempt == max_retries - 1:
+                return generate_fallback_explanation(question, correct_answer, user_answer, is_correct, topic)
+            time.sleep(base_delay * (2 ** attempt))
+
+def generate_fallback_explanation(question: str, correct_answer: str, user_answer: str, is_correct: bool, topic: str) -> str:
+    """Generate a fallback explanation when API calls fail."""
+    if is_correct:
+        return f"Correct! {correct_answer} is the right answer. Well done on understanding this concept about {topic}!"
+    else:
+        return f"Incorrect. The correct answer is {correct_answer}. Review the material on {topic} to better understand this concept."
 
 def generate_quiz_for_document(doc_id: int, max_questions_per_topic: int = 2) -> List[QuizQuestion]:
     """Generate a quiz for a document with improved error handling."""

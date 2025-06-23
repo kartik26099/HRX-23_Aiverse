@@ -8,13 +8,22 @@ import random
 from sentence_transformers import CrossEncoder
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import requests
 
 # Load environment variables
 load_dotenv()
 
-# Groq setup
-from groq import Groq
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+# OpenRouter setup (same as other services)
+API_URL = os.getenv("LLM_API_URL", "https://openrouter.ai/api/v1/chat/completions")
+API_KEY = os.getenv("LLM_API_KEY", "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")
+MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/llama-3.1-8b-instruct:free")
+
+HEADERS = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json",
+    "HTTP-Referer": "http://localhost:8000",
+    "X-Title": "AI Faculty Chat"
+}
 
 # Initialize reranker
 reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
@@ -113,13 +122,19 @@ async def process_chunk_async(chunk: Dict, query: str, system_message: str) -> D
         {"role": "user", "content": chunk_prompt}
     ]
     
-    # Generate response for this chunk
-    chat_completion = groq_client.chat.completions.create(
-        messages=messages,
-        model="llama-3.3-70b-versatile",
-    )
+    # Generate response for this chunk using OpenRouter
+    data = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "temperature": 0.7,
+        "max_tokens": 500
+    }
     
-    chunk_response = chat_completion.choices[0].message.content
+    response = requests.post(API_URL, headers=HEADERS, json=data)
+    response.raise_for_status()
+    result = response.json()
+    
+    chunk_response = result["choices"][0]["message"]["content"]
     return {
         "chunk_response": chunk_response,
         "document_title": chunk["document_title"],
@@ -152,13 +167,19 @@ async def hierarchical_summarization(query: str, chunks: List[Dict], system_mess
         {"role": "user", "content": synthesis_prompt}
     ]
     
-    # Generate final synthesized response
-    chat_completion = groq_client.chat.completions.create(
-        messages=messages,
-        model="llama-3.3-70b-versatile",
-    )
+    # Generate final synthesized response using OpenRouter
+    data = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "temperature": 0.7,
+        "max_tokens": 800
+    }
     
-    final_response = chat_completion.choices[0].message.content
+    response = requests.post(API_URL, headers=HEADERS, json=data)
+    response.raise_for_status()
+    result = response.json()
+    
+    final_response = result["choices"][0]["message"]["content"]
     
     # Return the final response and sources
     sources = [{"document_title": result["document_title"], "document_id": result["document_id"]} 
@@ -189,17 +210,26 @@ def generate_improved_query(original_query: str, conversation_history: List[Chat
         {"role": "user", "content": prompt}
     ]
     
-    # Generate improved query
+    # Generate improved query using OpenRouter
     try:
-        chat_completion = groq_client.chat.completions.create(
-            messages=messages,
-            model="llama-3.3-70b-versatile",
-        )
+        data = {
+            "model": MODEL_NAME,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 200
+        }
         
-        improved_query = chat_completion.choices[0].message.content.strip()
+        response = requests.post(API_URL, headers=HEADERS, json=data)
+        response.raise_for_status()
+        result = response.json()
+        
+        improved_query = result["choices"][0]["message"]["content"].strip()
         # Remove quotes if present
-        improved_query = improved_query.strip('"\'')
-        return improved_query
+        if improved_query.startswith('"') and improved_query.endswith('"'):
+            improved_query = improved_query[1:-1]
+        
+        return improved_query if improved_query else original_query
+        
     except Exception as e:
         print(f"Error generating improved query: {str(e)}")
         return original_query
@@ -297,16 +327,22 @@ async def chat_with_documents(message: str, conversation_history: List[ChatMessa
         # Add the current prompt
         messages.append({"role": "user", "content": prompt})
         
-        # Generate response using Groq LLM
-        chat_completion = groq_client.chat.completions.create(
-            messages=messages,
-            model="llama-3.3-70b-versatile",
-        )
+        # Generate response using OpenRouter LLM
+        data = {
+            "model": MODEL_NAME,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 1024
+        }
         
-        response = chat_completion.choices[0].message.content
+        response = requests.post(API_URL, headers=HEADERS, json=data)
+        response.raise_for_status()
+        result = response.json()
+        
+        response_text = result["choices"][0]["message"]["content"]
         
         # Add human-like touches
-        enhanced_response = add_human_touch(response)
+        enhanced_response = add_human_touch(response_text)
         
         # Prepare sources information
         sources = []

@@ -17,6 +17,7 @@ Pillow==11.0.0
 
 # Audio/Video processing
 openai-whisper==20231117
+numpy==1.26.4
 
 # Jinja2 for templating (used by FastAPI)
 jinja2==3.1.6

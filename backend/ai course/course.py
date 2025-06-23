@@ -14,7 +14,12 @@ SCRAPINGDOG_API_KEY = os.getenv("SCRAPINGDOG_API_KEY")
 
  #  Initialize Flask app and enable CORS
 app = Flask(__name__)
-CORS(app)  
+CORS(app, origins=[
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:3000",  # Keep for backward compatibility
+    "http://127.0.0.1:3000"   # Keep for backward compatibility
+])  
 
 # Configure Gemini
 try:
@@ -222,151 +227,62 @@ def generate_mock_videos_for_topic(topic):
 
 def add_youtube_videos(course):
     try:
-        # Check if API key is available
         if not SCRAPINGDOG_API_KEY:
-            print("Warning: SCRAPINGDOG_API_KEY is not set or empty")
+            print("Warning: SCRAPINGDOG_API_KEY is not set. Using mock videos.")
             return add_mock_youtube_videos(course)
             
-        # Use the correct endpoint format for ScrapingDog
-        url = "https://api.scrapingdog.com/scrape"
-        api_key = SCRAPINGDOG_API_KEY
+        # Use the correct ScrapingDog YouTube Search API endpoint
+        search_url = "https://api.scrapingdog.com/youtube/search"
         
         for module in course.get("modules", []):
             query = module.get("title", "")
             if not query:
                 continue
+
+            print(f"Searching for videos for module: {query}")
             
-            # Construct a YouTube search URL that ScrapingDog can scrape
-            youtube_search_url = f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}"
-            
-            # Updated parameters for ScrapingDog API
             params = {
-                "api_key": api_key,
-                "url": youtube_search_url,
-                "dynamic": "true"  # Use dynamic scraping for JavaScript-rendered content
-            }
-            
-            # Add proper headers
-            headers = {
-                "Accept": "application/json",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                'api_key': SCRAPINGDOG_API_KEY,
+                'search_query': query,
+                'country': 'us'
             }
             
             try:
-                print(f"Sending request to ScrapingDog API for query: {query}")
-                print(f"Request URL: {url} with YouTube search: {youtube_search_url}")
-                
-                response = requests.get(url, params=params, headers=headers, timeout=30)
-                print(f"ScrapingDog API status code: {response.status_code}")
+                response = requests.get(search_url, params=params, timeout=10)
                 
                 if response.status_code == 200:
-                    # Handle the raw response
-                    raw_response = response.text
+                    data = response.json()
                     
-                    # Check if the response is HTML instead of JSON
-                    if raw_response.strip().startswith('<!DOCTYPE html>') or '<html' in raw_response:
-                        print("Received HTML response instead of JSON")
-                        print(f"HTML response preview: {raw_response[:500]}")  # Print first 500 chars to see error messages
-                        module["recommended_videos"] = generate_mock_videos_for_topic(query)
-                        continue
-                        
-                    try:
-                        data = response.json()
-                        
-                        # Parse the scraped YouTube search results
-                        videos = []
-                        video_count = 0
-                        
-                        # This parsing will depend on the structure of the response
-                        # ScrapingDog might return the HTML structure of YouTube search results
-                        # Let's try to extract video information from common patterns
-                        
-                        # Look for video containers
-                        video_items = data.get('videoRenderers', [])
-                        if not video_items and isinstance(data, dict):
-                            # Try to find video items in different locations of the response
-                            # This is just an example - you'll need to adapt to the actual structure
-                            contents = data.get('contents', {})
-                            if contents:
-                                two_column_browse = contents.get('twoColumnBrowseResultsRenderer', {})
-                                if two_column_browse:
-                                    tabs = two_column_browse.get('tabs', [{}])[0]
-                                    tab_renderer = tabs.get('tabRenderer', {})
-                                    if tab_renderer:
-                                        content = tab_renderer.get('content', {})
-                                        section_list = content.get('sectionListRenderer', {})
-                                        if section_list:
-                                            items = section_list.get('contents', [{}])[0]
-                                            item_section = items.get('itemSectionRenderer', {})
-                                            if item_section:
-                                                video_items = item_section.get('contents', [])
-                        
-                        for item in video_items:
-                            if video_count >= 1:  # Limit to 3 videos
-                                break
-                                
-                            video_renderer = item.get('videoRenderer', {})
-                            if not video_renderer:
-                                continue
-                                
-                            video_id = video_renderer.get('videoId', '')
-                            title_runs = video_renderer.get('title', {}).get('runs', [{}])
-                            title = title_runs[0].get('text', 'No title') if title_runs else 'No title'
-                            
-                            channel_runs = video_renderer.get('ownerText', {}).get('runs', [{}])
-                            channel = channel_runs[0].get('text', 'Unknown channel') if channel_runs else 'Unknown channel'
-                            
-                            length_text = video_renderer.get('lengthText', {}).get('simpleText', 'Unknown duration')
-                            
-                            if video_id:
-                                video_data = {
-                                    "title": title,
-                                    "link": f"https://www.youtube.com/watch?v={video_id}",
-                                    "channel": channel,
-                                    "duration": length_text
-                                }
-                                videos.append(video_data)
-                                video_count += 1
-                        
-                        # If we couldn't parse any videos, fall back to a simpler approach
-                        if not videos:
-                            # Try to find video IDs directly using regex
-                            import re
-                            video_ids = re.findall(r'watch\?v=([a-zA-Z0-9_-]{11})', raw_response)
-                            
-                            # Use found video IDs to create basic video objects
-                            for i, vid_id in enumerate(video_ids[:1]):  # Limit to first 3 found
-                                videos.append({
-                                    "title": f"{query} - Video {i+1}",
-                                    "link": f"https://www.youtube.com/watch?v={vid_id}",
-                                    "channel": "YouTube Channel",
-                                    "duration": "Unknown"
-                                })
-                        
-                        # If we still don't have videos, use mock videos
-                        if videos:
-                            module["recommended_videos"] = videos
-                        else:
-                            print("Failed to extract videos from response, using mock videos")
-                            module["recommended_videos"] = generate_mock_videos_for_topic(query)
-                    except json.JSONDecodeError as e:
-                        print(f"Failed to parse JSON response: {e}")
-                        print(f"Response text (first 200 chars): {raw_response[:200]}...")
-                        module["recommended_videos"] = generate_mock_videos_for_topic(query)
+                    # Ensure data is a list of videos
+                    videos_data = data if isinstance(data, list) else data.get('results', [])
+                    if not isinstance(videos_data, list):
+                        videos_data = [] # Fallback if format is unexpected
+
+                    videos = []
+                    for video in videos_data[:3]: # Get top 3 videos
+                        if isinstance(video, dict):
+                            videos.append({
+                                'title': video.get('title', 'N/A'),
+                                'link': video.get('link', ''),
+                                'channel': video.get('channel', {}).get('name', 'N/A') if isinstance(video.get('channel'), dict) else 'N/A',
+                                'duration': video.get('length', 'N/A'),
+                            })
+                    module['videos'] = videos
+                    print(f"Found {len(videos)} videos for '{query}'")
                 else:
-                    print(f"ScrapingDog API error: {response.status_code} - {response.text[:200]}")
-                    module["recommended_videos"] = generate_mock_videos_for_topic(query)
+                    print(f"Error fetching videos for '{query}': {response.status_code} - {response.text}")
+                    module['videos'] = generate_mock_videos_for_topic(query)
+
             except requests.exceptions.RequestException as e:
-                print(f"Request error fetching videos for module '{query}': {str(e)}")
-                module["recommended_videos"] = generate_mock_videos_for_topic(query)
+                print(f"Request failed for '{query}': {e}")
+                module['videos'] = generate_mock_videos_for_topic(query)
                 
-        return course
     except Exception as e:
-        print(f"Error in add_youtube_videos: {str(e)}")
-        print(traceback.format_exc())
-        # Fall back to mock videos
-        return add_mock_youtube_videos(course)
-        
+        print(f"An unexpected error occurred in add_youtube_videos: {e}")
+        traceback.print_exc()
+
+    return course
+
 def add_mock_youtube_videos(course):
     """Add mock YouTube videos to all modules in the course"""
     for module in course.get("modules", []):

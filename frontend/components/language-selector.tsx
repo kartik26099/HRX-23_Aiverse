@@ -150,30 +150,35 @@ export function LanguageSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative" disabled={isChanging}>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="ai-button hover:bg-ai-secondary/10 hover:text-ai-secondary transition-all duration-300 relative" 
+          disabled={isChanging}
+        >
           <Globe className="h-5 w-5" />
           {isClient && currentLanguage && (
-            <span className="absolute -top-1 -right-1 text-xs bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 text-xs bg-gradient-to-r from-ai-secondary to-ai-neural text-white rounded-full w-4 h-4 flex items-center justify-center shadow-lg">
               {currentLanguage.flag}
             </span>
           )}
           <span className="sr-only">Select language</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">Select Language</div>
+      <DropdownMenuContent align="end" className="w-48 bg-background/95 backdrop-blur-xl border border-border/50 shadow-xl">
+        <div className="px-2 py-1.5 text-sm font-semibold text-ai-secondary">Select Language</div>
         {languages.map((language) => (
           <DropdownMenuItem
             key={language.code}
             onClick={() => handleLanguageChange(language.code)}
-            className="flex items-center justify-between cursor-pointer"
+            className="flex items-center justify-between cursor-pointer hover:bg-ai-secondary/10 hover:text-ai-secondary transition-colors duration-300"
             disabled={isChanging}
           >
             <div className="flex items-center gap-2">
               <span className="text-lg">{language.flag}</span>
               <span>{language.name}</span>
             </div>
-            {selectedLanguage === language.code && <Check className="h-4 w-4 text-blue-600" />}
+            {selectedLanguage === language.code && <Check className="h-4 w-4 text-ai-secondary" />}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

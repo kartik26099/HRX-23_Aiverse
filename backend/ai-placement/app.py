@@ -4,6 +4,7 @@ import json
 import logging
 import asyncio
 from werkzeug.utils import secure_filename
+from flask_cors import CORS
 
 # Import functions from the provided modules
 from jd_summarizer_agent import summarize_jd
@@ -35,6 +36,14 @@ os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'jds'), exist_ok=True)
 # Initialize Resume Parser
 mistral_api_key = os.getenv("MISTRAL_API_KEY", "wxJu9G7KyqjjTfLbjaRRso4utGo9mqDX")
 resume_parser = MistralResumeParser(api_key=mistral_api_key)
+
+# CORS configuration
+CORS(app, origins=[
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:3000",  # Keep for backward compatibility
+    "http://127.0.0.1:3000"   # Keep for backward compatibility
+])
 
 # Helper function to check allowed file extensions
 def allowed_file(filename):

@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { Wrench, Clock, Calendar, CheckCircle, Target, Lightbulb, Package, ExternalLink, Play, AlertCircle, Brain, Database } from "lucide-react"
+import { Wrench, Clock, Calendar, CheckCircle, Target, Lightbulb, Package, ExternalLink, Play, AlertCircle, Brain, Database, Sparkles, Zap, ArrowRight, FileText, Users, BarChart3, Eye, Loader2 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import MermaidRoadmap from '@/components/MermaidRoadmap'
 
 interface ProjectRoadmap {
   title: string
@@ -25,6 +26,7 @@ interface ProjectRoadmap {
     materials: string[]
     resources: string[]
     milestone: boolean
+    videos?: any[]
   }[]
   materials: string[]
   tools: string[]
@@ -37,6 +39,10 @@ interface ProjectRoadmap {
   isMlProject?: boolean
   videos?: any[]
   knowledgeAssessment?: string
+  phaseVideos?: any
+  projectOverview?: string
+  domain?: string
+  templatesHints?: string
 }
 
 interface ApiResponse {
@@ -60,6 +66,8 @@ export default function DIYGeneratorPage() {
   const [roadmap, setRoadmap] = useState<ProjectRoadmap | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [mermaidCode, setMermaidCode] = useState<string | null>(null)
+  const [isGeneratingMermaid, setIsGeneratingMermaid] = useState(false)
   const [suggestions] = useState([
     "Build a Weather App",
     "Create a Personal Portfolio",
@@ -90,10 +98,10 @@ export default function DIYGeneratorPage() {
 
     setIsGenerating(true)
     setError(null)
+    setMermaidCode(null)
 
     try {
       const skillLevel = getExperienceLabel(formData.experienceLevel[0]).toLowerCase()
-      
       const requestData = {
         topic: formData.topic,
         available_time: `${formData.availableHours} hours`,
@@ -101,34 +109,19 @@ export default function DIYGeneratorPage() {
         user_description: formData.userDescription,
         youtube_url: formData.youtubeUrl || "",
       }
-
-      console.log("Sending request to backend:", requestData)
-
       const response = await fetch(`${BACKEND_URL}/api/generate-roadmap`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData),
       })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
       const data: ApiResponse = await response.json()
-      console.log("Backend response:", data)
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to generate roadmap')
-      }
-
-      // Transform the backend response to match our frontend interface
+      if (!data.success) throw new Error(data.error || 'Failed to generate roadmap')
       const transformedRoadmap: ProjectRoadmap = {
         title: data.project_data?.project_title || `DIY Project: ${formData.topic}`,
         totalDuration: data.project_data?.estimated_time || `${formData.availableHours} hours`,
         experienceLevel: data.assessed_skill_level || skillLevel,
-        days: parseProjectRoadmap(data.project_data?.project_roadmap || ""),
+        days: parseProjectRoadmap(data.project_data?.project_roadmap || "", data.project_data?.phase_videos || {}),
         materials: parseList(data.project_data?.tools_and_materials || ""),
         tools: parseList(data.project_data?.tools_and_materials || ""),
         prerequisites: parseList(data.project_data?.prerequisites || ""),
@@ -140,16 +133,24 @@ export default function DIYGeneratorPage() {
         isMlProject: data.project_data?.is_ml_project || false,
         videos: data.videos || [],
         knowledgeAssessment: data.knowledge_assessment || "",
+        phaseVideos: data.project_data?.phase_videos || {},
+        projectOverview: data.project_data?.project_overview || "",
+        domain: data.project_data?.domain || "",
+        templatesHints: data.project_data?.templates_hints || "",
       }
+      
+      // Debug: Log the tools and materials data
+      console.log('Raw tools_and_materials:', data.project_data?.tools_and_materials)
+      console.log('Parsed tools:', transformedRoadmap.tools)
+      console.log('Full project data:', data.project_data)
 
       setRoadmap(transformedRoadmap)
+      await fetchMermaidCode(data.project_data)
       toast({
         title: "Roadmap Generated!",
         description: "Your personalized project roadmap has been created successfully.",
       })
-
     } catch (err) {
-      console.error('Error generating roadmap:', err)
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred'
       setError(errorMessage)
       toast({
@@ -162,7 +163,7 @@ export default function DIYGeneratorPage() {
     }
   }
 
-  const parseProjectRoadmap = (roadmapText: string) => {
+  const parseProjectRoadmap = (roadmapText: string, phaseVideos: any) => {
     if (!roadmapText) return []
     
     const phases = roadmapText.split('PHASE').filter(phase => phase.trim())
@@ -170,6 +171,10 @@ export default function DIYGeneratorPage() {
       const lines = phase.split('\n').filter(line => line.trim())
       const title = lines[0]?.replace(/^\d+:\s*/, '').trim() || `Phase ${index + 1}`
       const duration = extractDuration(lines[0] || "")
+      
+      // Map phase videos to the correct phase index
+      const phaseKey = `phase_${index + 1}`
+      const videos = phaseVideos[phaseKey] || []
       
       return {
         day: index + 1,
@@ -179,6 +184,7 @@ export default function DIYGeneratorPage() {
         materials: [],
         resources: [],
         milestone: index === 1 || index === phases.length - 1, // First and last phases are milestones
+        videos: videos,
       }
     })
   }
@@ -200,106 +206,127 @@ export default function DIYGeneratorPage() {
       }
       return `${minutes} minutes`
     }
-    return "2-3 hours"
+    return "1-2 hours"
   }
 
   const getExperienceLabel = (level: number) => {
-    const labels = ["Beginner", "Beginner+", "Intermediate", "Intermediate+", "Advanced"]
+    const labels = ["Beginner", "Novice", "Intermediate", "Advanced", "Expert"]
     return labels[level - 1] || "Intermediate"
   }
 
   const handleSuggestionClick = (suggestion: string) => {
-    setFormData({ ...formData, topic: suggestion })
+    setFormData(prev => ({ ...prev, topic: suggestion }))
   }
 
   const testBackendConnection = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/health`)
-      const data = await response.json()
-      console.log("Backend health check:", data)
-      if (data.status === 'healthy') {
+      const response = await fetch(`${BACKEND_URL}/api/health`)
+      if (response.ok) {
         toast({
-          title: "Backend Connected!",
-          description: "Successfully connected to the AI DIY backend.",
+          title: "Backend Connected",
+          description: "Successfully connected to the backend server.",
         })
       } else {
-        toast({
-          title: "Backend Issue",
-          description: "Backend is running but may have issues.",
-          variant: "destructive",
-        })
+        throw new Error(`HTTP ${response.status}`)
       }
-      return data.status === 'healthy'
     } catch (error) {
-      console.error("Backend connection failed:", error)
       toast({
-        title: "Connection Failed",
-        description: "Cannot connect to backend. Make sure it's running.",
+        title: "Backend Connection Failed",
+        description: "Could not connect to the backend server.",
         variant: "destructive",
       })
-      return false
+    }
+  }
+
+  const getExperienceColor = (level: string) => {
+    switch (level.toLowerCase()) {
+      case "beginner":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800"
+      case "novice":
+        return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+      case "intermediate":
+        return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
+      case "advanced":
+        return "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800"
+      case "expert":
+        return "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+      default:
+        return "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/20 dark:text-slate-400 dark:border-slate-800"
+    }
+  }
+
+  const fetchMermaidCode = async (projectData: any) => {
+    try {
+      setIsGeneratingMermaid(true)
+      const response = await fetch(`${BACKEND_URL}/api/generate-mermaid-roadmap`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_data: projectData }),
+      })
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+      const data = await response.json()
+      if (data.success) {
+        setMermaidCode(data.mermaid_code)
+        console.log('Mermaid code:', data.mermaid_code)
+      } else {
+        throw new Error(data.error || 'Failed to generate Mermaid roadmap')
+      }
+    } catch (err) {
+      setMermaidCode(null)
+    } finally {
+      setIsGeneratingMermaid(false)
     }
   }
 
   return (
-    <div className="container py-8 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-4">AI DIY Project Generator</h1>
-        <p className="text-muted-foreground">
-          Generate step-by-step project roadmaps with timelines, materials, and resources powered by AI
-        </p>
-        <div className="flex items-center gap-2 mt-2">
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-            <Brain className="w-3 h-3 mr-1" />
-            AI-Powered
-          </Badge>
-          <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
-            <Database className="w-3 h-3 mr-1" />
-            Backend Integrated
-          </Badge>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center space-x-2 mb-3">
+            <Wrench className="h-6 w-6 text-slate-600" />
+            <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200">
+              DIY Project Generator
+            </h1>
+          </div>
+          <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+            Create personalized project roadmaps with AI guidance tailored to your skill level and time constraints.
+          </p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Wrench className="w-5 h-5" />
-                Project Generator
-              </CardTitle>
-              <CardDescription>Tell us about your project idea and we'll create a detailed roadmap</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="topic">Project Topic</Label>
-                  <Input
-                    id="topic"
-                    placeholder="e.g., Build a Weather App"
-                    value={formData.topic}
-                    onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
-                    required
-                  />
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {suggestions.map((suggestion, index) => (
-                      <Button
-                        key={index}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSuggestionClick(suggestion)}
-                        className="text-xs"
-                      >
-                        {suggestion}
-                      </Button>
-                    ))}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Form Section */}
+          <div className="lg:col-span-2">
+            <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <CardHeader className="border-b border-slate-200 dark:border-slate-700 pb-4">
+                <CardTitle className="flex items-center space-x-2 text-slate-800 dark:text-slate-200">
+                  <Sparkles className="h-4 w-4 text-slate-600" />
+                  <span>Generate Project Roadmap</span>
+                </CardTitle>
+                <CardDescription className="text-slate-600 dark:text-slate-400">
+                  Tell us about your project idea and we'll create a personalized roadmap for you.
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent className="p-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="topic" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Project Topic
+                    </Label>
+                    <Input
+                      id="topic"
+                      placeholder="e.g., Build a Weather App, Create a Portfolio Website"
+                      value={formData.topic}
+                      onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+                      className="mt-1 border-slate-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-500"
+                    />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>Experience Level</Label>
-                  <div className="px-3">
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                      Experience Level: <span className="text-slate-600 font-medium">{getExperienceLabel(formData.experienceLevel[0])}</span>
+                    </Label>
                     <Slider
                       value={formData.experienceLevel}
                       onValueChange={(value) => setFormData({ ...formData, experienceLevel: value })}
@@ -308,425 +335,528 @@ export default function DIYGeneratorPage() {
                       step={1}
                       className="w-full"
                     />
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
                       <span>Beginner</span>
                       <span>Expert</span>
                     </div>
-                    <p className="text-sm text-center mt-2 font-medium">
-                      {getExperienceLabel(formData.experienceLevel[0])}
-                    </p>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="hours">Available Hours</Label>
-                  <Input
-                    id="hours"
-                    type="number"
-                    placeholder="e.g., 20"
-                    value={formData.availableHours}
-                    onChange={(e) => setFormData({ ...formData, availableHours: e.target.value })}
-                    required
-                    min="1"
-                    max="200"
-                  />
-                  <p className="text-xs text-muted-foreground">Total hours you can dedicate to this project</p>
-                </div>
+                  <div>
+                    <Label htmlFor="availableHours" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Available Hours
+                    </Label>
+                    <Input
+                      id="availableHours"
+                      type="number"
+                      placeholder="e.g., 20"
+                      value={formData.availableHours}
+                      onChange={(e) => setFormData({ ...formData, availableHours: e.target.value })}
+                      className="mt-1 border-slate-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-500"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Your Experience (Optional)</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Describe your current knowledge and experience with this topic..."
-                    value={formData.userDescription}
-                    onChange={(e) => setFormData({ ...formData, userDescription: e.target.value })}
-                    rows={3}
-                  />
-                  <p className="text-xs text-muted-foreground">This helps us assess your actual skill level and customize the roadmap</p>
-                </div>
+                  <div>
+                    <Label htmlFor="youtubeUrl" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      YouTube URL (Optional)
+                    </Label>
+                    <Input
+                      id="youtubeUrl"
+                      placeholder="https://youtube.com/watch?v=..."
+                      value={formData.youtubeUrl}
+                      onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
+                      className="mt-1 border-slate-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-500"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="youtube">YouTube Reference (Optional)</Label>
-                  <Input
-                    id="youtube"
-                    placeholder="https://youtube.com/watch?v=..."
-                    value={formData.youtubeUrl}
-                    onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">Reference video to base the project on</p>
-                </div>
+                  <div>
+                    <Label htmlFor="userDescription" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Additional Details
+                    </Label>
+                    <Textarea
+                      id="userDescription"
+                      placeholder="Describe your project goals, specific features you want, or any constraints..."
+                      value={formData.userDescription}
+                      onChange={(e) => setFormData({ ...formData, userDescription: e.target.value })}
+                      className="mt-1 border-slate-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-500 min-h-[80px]"
+                    />
+                  </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isGenerating || !formData.topic.trim() || !formData.availableHours}
-                >
-                  {isGenerating ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Generating Roadmap...
-                    </>
-                  ) : (
-                    "Generate Project Roadmap"
-                  )}
-                </Button>
-
-                <div className="text-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={testBackendConnection}
-                    className="text-xs text-muted-foreground"
-                  >
-                    Test Backend Connection
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-2">
-          {error && (
-            <Card className="mb-6 border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                  <AlertCircle className="w-5 h-5" />
-                  <span className="font-medium">Error: {error}</span>
-                </div>
-                <p className="text-sm text-red-500 dark:text-red-400 mt-2">
-                  Make sure the backend is running at {BACKEND_URL}
-                </p>
+                  <div className="flex space-x-3 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={testBackendConnection}
+                      className="border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    >
+                      <Database className="mr-2 h-3 w-3" />
+                      Test Connection
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isGenerating}
+                      className="flex-1 bg-slate-800 hover:bg-slate-700 dark:bg-slate-200 dark:text-slate-800 dark:hover:bg-slate-300"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="mr-2 h-3 w-3" />
+                          Generate Roadmap
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
-          )}
+          </div>
 
-          {isGenerating && (
-            <div className="flex items-center justify-center h-96">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Creating your project roadmap...</p>
-                <p className="text-sm text-muted-foreground mt-2">This may take a few moments</p>
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Brain className="w-4 h-4" />
-                    Analyzing your requirements
+          {/* Sidebar */}
+          <div className="space-y-4">
+            {/* Project Suggestions */}
+            <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <CardHeader className="border-b border-slate-200 dark:border-slate-700 pb-3">
+                <CardTitle className="flex items-center space-x-2 text-slate-800 dark:text-slate-200">
+                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                  <span>Popular Ideas</span>
+                </CardTitle>
+                <CardDescription className="text-slate-600 dark:text-slate-400 text-xs">
+                  Click any suggestion to fill the project topic
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-3">
+                <div className="grid grid-cols-1 gap-2">
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="p-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded hover:border-slate-300 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors text-left group"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Target className="h-3 w-3 text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300" />
+                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">
+                          {suggestion}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* What You'll Get */}
+            <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <CardHeader className="border-b border-slate-200 dark:border-slate-700 pb-3">
+                <CardTitle className="flex items-center space-x-2 text-slate-800 dark:text-slate-200">
+                  <Brain className="h-4 w-4 text-slate-600" />
+                  <span>What You'll Get</span>
+                </CardTitle>
+                <CardDescription className="text-slate-600 dark:text-slate-400 text-xs">
+                  Your personalized project roadmap will include:
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent className="p-3">
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-2">
+                    <Eye className="h-3 w-3 text-slate-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-medium text-slate-800 dark:text-slate-200">Project Overview</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">Comprehensive explanation of what you'll build</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Target className="w-4 h-4" />
-                    Generating personalized roadmap
+                  
+                  <div className="flex items-start space-x-2">
+                    <Calendar className="h-3 w-3 text-slate-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-medium text-slate-800 dark:text-slate-200">Step-by-Step Timeline</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">Detailed phases with estimated time</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Play className="w-4 h-4" />
-                    Finding relevant videos
+                  
+                  <div className="flex items-start space-x-2">
+                    <Package className="h-3 w-3 text-slate-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-medium text-slate-800 dark:text-slate-200">Resource Lists</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">Tools, materials, and learning resources</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-2">
+                    <Target className="h-3 w-3 text-slate-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-medium text-slate-800 dark:text-slate-200">Learning Objectives</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">Clear goals and skills you'll develop</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-2">
+                    <AlertCircle className="h-3 w-3 text-slate-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-medium text-slate-800 dark:text-slate-200">Common Pitfalls</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">Tips to avoid common mistakes</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-2">
+                    <Play className="h-3 w-3 text-slate-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-medium text-slate-800 dark:text-slate-200">Integrated Video Resources</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">Curated tutorials for each project phase</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
-          {roadmap && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="w-5 h-5" />
-                    {roadmap.title}
-                  </CardTitle>
-                  <div className="flex gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {roadmap.totalDuration}
-                    </div>
-                    <Badge variant="secondary">{roadmap.experienceLevel}</Badge>
-                    {roadmap.isMlProject && (
-                      <Badge variant="outline" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                        <Brain className="w-3 h-3 mr-1" />
-                        ML Project
-                      </Badge>
-                    )}
-                  </div>
-                  {roadmap.knowledgeAssessment && (
-                    <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                      <p className="text-sm text-blue-800 dark:text-blue-200">
-                        <strong>Knowledge Assessment:</strong> {roadmap.knowledgeAssessment}
-                      </p>
-                    </div>
-                  )}
-                </CardHeader>
-              </Card>
-
-              {/* Prerequisites */}
-              {roadmap.prerequisites && roadmap.prerequisites.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Prerequisites</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {roadmap.prerequisites.map((prereq, index) => (
-                        <li key={index} className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                          <span className="text-sm">{prereq}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Learning Objectives */}
-              {roadmap.learningObjectives && roadmap.learningObjectives.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Learning Objectives</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {roadmap.learningObjectives.map((objective, index) => (
-                        <li key={index} className="flex items-center gap-2">
-                          <Target className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm">{objective}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Day-by-day roadmap */}
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  Project Roadmap
+        {/* Generated Roadmap */}
+        {roadmap && (
+          <div className="mt-8">
+            {/* Mermaid Roadmap Section */}
+            {mermaidCode && mermaidCode.trim() && (
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold mb-4 text-center text-slate-800 dark:text-slate-200">
+                  Project Roadmap Flowchart
                 </h2>
-                {roadmap.days.map((day, index) => (
-                  <Card
-                    key={day.day}
-                    className={`${day.milestone ? "border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800" : ""}`}
-                  >
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                              day.milestone ? "bg-green-600 text-white" : "bg-blue-600 text-white"
-                            }`}
-                          >
-                            {day.day}
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">{day.title}</CardTitle>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant="outline" className="text-xs">
-                                <Clock className="w-3 h-3 mr-1" />
-                                {day.duration}
-                              </Badge>
-                              {day.milestone && (
-                                <Badge className="text-xs bg-green-600">
-                                  <Target className="w-3 h-3 mr-1" />
-                                  Milestone
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
+                <MermaidRoadmap mermaidCode={mermaidCode} />
+              </div>
+            )}
+            <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <CardHeader className="border-b border-slate-200 dark:border-slate-700 pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-200">
+                      {roadmap.title}
+                    </CardTitle>
+                    <CardDescription className="text-slate-600 dark:text-slate-400">
+                      Your personalized project roadmap
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Badge className={`border ${getExperienceColor(roadmap.experienceLevel)}`}>
+                      {roadmap.experienceLevel}
+                    </Badge>
+                    <div className="flex items-center space-x-1 text-sm text-slate-600 dark:text-slate-400">
+                      <Clock className="h-3 w-3" />
+                      <span>{roadmap.totalDuration}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="p-6">
+                <div className="grid lg:grid-cols-3 gap-6">
+                  {/* Project Overview */}
+                  <div className="lg:col-span-2 space-y-4">
+                    {/* Project Overview Section */}
+                    {roadmap.projectOverview && (
+                      <div className="mb-6">
+                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                          <Eye className="h-4 w-4 text-slate-600" />
+                          <span>Project Overview</span>
+                        </h3>
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                            {roadmap.projectOverview}
+                          </p>
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      {day.tasks.length > 0 && (
-                        <div>
-                          <h4 className="font-medium mb-2 flex items-center gap-1">
-                            <CheckCircle className="w-4 h-4" />
-                            Tasks
+                    )}
+
+                    {/* Project Details Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      {/* Domain */}
+                      {roadmap.domain && (
+                        <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
+                          <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center space-x-2">
+                            <Package className="h-3 w-3 text-slate-600" />
+                            <span>Domain</span>
                           </h4>
-                          <ul className="space-y-1 text-sm mb-4">
-                            {day.tasks.map((task, taskIndex) => (
-                              <li key={taskIndex} className="flex items-start gap-2">
-                                <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></span>
-                                {task}
-                              </li>
-                            ))}
-                          </ul>
+                          <Badge className="bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
+                            {roadmap.domain}
+                          </Badge>
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
 
-              {/* Materials and Tools */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="w-5 h-5" />
-                      Required Materials
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {roadmap.materials.map((material, index) => (
-                        <li key={index} className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                          <span className="text-sm">{material}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
+                      {/* Difficulty Level */}
+                      <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
+                        <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center space-x-2">
+                          <Target className="h-3 w-3 text-slate-600" />
+                          <span>Difficulty</span>
+                        </h4>
+                        <Badge className={`border ${getExperienceColor(roadmap.experienceLevel)}`}>
+                          {roadmap.experienceLevel}
+                        </Badge>
+                      </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Wrench className="w-5 h-5" />
-                      Recommended Tools
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {roadmap.tools.map((tool, index) => (
-                        <li key={index} className="flex items-center gap-2">
-                          <Lightbulb className="w-4 h-4 text-yellow-600" />
-                          <span className="text-sm">{tool}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
+                      {/* Time Estimate */}
+                      <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
+                        <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center space-x-2">
+                          <Clock className="h-3 w-3 text-slate-600" />
+                          <span>Time Estimate</span>
+                        </h4>
+                        <span className="text-sm text-slate-700 dark:text-slate-300">{roadmap.totalDuration}</span>
+                      </div>
 
-              {/* Datasets for ML Projects */}
-              {roadmap.isMlProject && roadmap.datasets && roadmap.datasets.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Database className="w-5 h-5" />
-                      Recommended Datasets
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {roadmap.datasets.map((dataset, index) => (
-                        <li key={index} className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-purple-600" />
-                          <span className="text-sm">{dataset}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Recommended Videos */}
-              {roadmap.videos && roadmap.videos.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Play className="w-5 h-5" />
-                      Recommended Videos
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {roadmap.videos.slice(0, 5).map((video, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                          <Play className="w-4 h-4 text-muted-foreground" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{video.title}</p>
-                            <p className="text-xs text-muted-foreground">{video.channel}</p>
-                          </div>
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={video.link} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="w-4 h-4 mr-1" />
-                              Watch
-                            </a>
-                          </Button>
+                      {/* Knowledge Assessment */}
+                      {roadmap.knowledgeAssessment && (
+                        <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
+                          <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center space-x-2">
+                            <Brain className="h-3 w-3 text-slate-600" />
+                            <span>Knowledge Level</span>
+                          </h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                            {roadmap.knowledgeAssessment}
+                          </p>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              )}
 
-              {/* Common Pitfalls */}
-              {roadmap.commonPitfalls && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Common Pitfalls & Troubleshooting</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="prose prose-sm max-w-none">
-                      <p className="whitespace-pre-line">{roadmap.commonPitfalls}</p>
+                    {/* Learning Objectives */}
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                        <Target className="h-4 w-4 text-slate-600" />
+                        <span>Learning Objectives</span>
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {roadmap.learningObjectives?.map((objective, index) => (
+                          <div key={index} className="flex items-start space-x-2 bg-slate-50 dark:bg-slate-700 rounded p-2">
+                            <CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 flex-shrink-0" />
+                            <span className="text-xs text-slate-700 dark:text-slate-300">{objective}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
 
-              {/* Success Criteria */}
-              {roadmap.successCriteria && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Success Criteria</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="prose prose-sm max-w-none">
-                      <p className="whitespace-pre-line">{roadmap.successCriteria}</p>
+                    {/* Templates & Hints */}
+                    {roadmap.templatesHints && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                          <Sparkles className="h-4 w-4 text-slate-600" />
+                          <span>Templates & Hints</span>
+                        </h3>
+                        <Card className="border border-slate-200 dark:border-slate-700">
+                          <CardContent className="p-3">
+                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                              {roadmap.templatesHints}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+
+                    {/* Project Timeline */}
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                        <Calendar className="h-4 w-4 text-slate-600" />
+                        <span>Project Timeline</span>
+                      </h3>
+                      <div className="space-y-3">
+                        {roadmap.days.map((day, index) => (
+                          <Card key={index} className="border border-slate-200 dark:border-slate-700">
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm text-slate-800 dark:text-slate-200">
+                                  Day {day.day}: {day.title}
+                                </CardTitle>
+                                <div className="flex items-center space-x-2">
+                                  <Clock className="h-3 w-3 text-slate-500" />
+                                  <span className="text-xs text-slate-600 dark:text-slate-400">{day.duration}</span>
+                                  {day.milestone && (
+                                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 text-xs">
+                                      Milestone
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-4">
+                                {/* Tasks */}
+                                <div className="space-y-2">
+                                  {day.tasks.map((task, taskIndex) => (
+                                    <div key={taskIndex} className="flex items-start space-x-2 bg-slate-50 dark:bg-slate-700 rounded p-2">
+                                      <div className="w-4 h-4 bg-slate-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <span className="text-white text-xs font-bold">{taskIndex + 1}</span>
+                                      </div>
+                                      <span className="text-xs text-slate-700 dark:text-slate-300">{task}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                {/* Videos for this phase */}
+                                {day.videos && day.videos.length > 0 && (
+                                  <div className="pt-3 border-t border-slate-200 dark:border-slate-600">
+                                    <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center space-x-2">
+                                      <Play className="h-3 w-3 text-red-600" />
+                                      <span>Learning Videos</span>
+                                    </h4>
+                                    <div className="grid grid-cols-1 gap-2">
+                                      {day.videos.map((video, videoIndex) => (
+                                        <Card key={videoIndex} className="border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
+                                          <CardContent className="p-2">
+                                            <div className="space-y-1">
+                                              <div className="flex items-start justify-between">
+                                                <h5 className="text-xs font-medium text-slate-800 dark:text-slate-200 line-clamp-2">
+                                                  {video.title}
+                                                </h5>
+                                              </div>
+                                              <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-400">
+                                                <span className="font-medium">{video.channel}</span>
+                                                {video.views && (
+                                                  <>
+                                                    <span>•</span>
+                                                    <span>{video.views}</span>
+                                                  </>
+                                                )}
+                                                {video.published_date && (
+                                                  <>
+                                                    <span>•</span>
+                                                    <span>{video.published_date}</span>
+                                                  </>
+                                                )}
+                                              </div>
+                                              <a
+                                                href={video.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block w-full"
+                                              >
+                                                <Button 
+                                                  variant="outline" 
+                                                  size="sm" 
+                                                  className="w-full text-xs border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500"
+                                                >
+                                                  <Play className="h-3 w-3 mr-1" />
+                                                  Watch Video
+                                                </Button>
+                                              </a>
+                                            </div>
+                                          </CardContent>
+                                        </Card>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
 
-              {/* Next Steps */}
-              {roadmap.nextSteps && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Next Steps & Extensions</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="prose prose-sm max-w-none">
-                      <p className="whitespace-pre-line">{roadmap.nextSteps}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    {/* Success Criteria */}
+                    {roadmap.successCriteria && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-slate-600" />
+                          <span>Success Criteria</span>
+                        </h3>
+                        <Card className="border border-slate-200 dark:border-slate-700">
+                          <CardContent className="p-3">
+                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                              {roadmap.successCriteria}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
 
-              {formData.youtubeUrl && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Play className="w-5 h-5" />
-                      Reference Video
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                      <Play className="w-4 h-4" />
-                      <span className="text-sm">Based on: {formData.youtubeUrl}</span>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={formData.youtubeUrl} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4 mr-1" />
-                          Watch
-                        </a>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
+                    {/* Next Steps */}
+                    {roadmap.nextSteps && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                          <ArrowRight className="h-4 w-4 text-slate-600" />
+                          <span>Next Steps & Extensions</span>
+                        </h3>
+                        <Card className="border border-slate-200 dark:border-slate-700">
+                          <CardContent className="p-3">
+                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                              {roadmap.nextSteps}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+                  </div>
 
-          {!roadmap && !isGenerating && !error && (
-            <Card className="h-96 flex items-center justify-center">
-              <CardContent className="text-center">
-                <Wrench className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Ready to Build Something Amazing</h3>
-                <p className="text-muted-foreground">Fill out the form to generate your personalized project roadmap</p>
+                  {/* Sidebar */}
+                  <div className="space-y-4">
+                    {/* Prerequisites */}
+                    {roadmap.prerequisites && roadmap.prerequisites.length > 0 && (
+                      <Card className="border border-slate-200 dark:border-slate-700">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm text-slate-800 dark:text-slate-200 flex items-center space-x-2">
+                            <FileText className="h-3 w-3 text-slate-600" />
+                            <span>Prerequisites</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-1">
+                            {roadmap.prerequisites.map((prereq, index) => (
+                              <div key={index} className="flex items-start space-x-2 text-xs text-slate-600 dark:text-slate-400">
+                                <div className="w-1 h-1 bg-slate-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                                <span>{prereq}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Tools & Materials */}
+                    <Card className="border border-slate-200 dark:border-slate-700">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-slate-800 dark:text-slate-200 flex items-center space-x-2">
+                          <Package className="h-3 w-3 text-slate-600" />
+                          <span>Tools & Materials</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-1">
+                          {roadmap.tools && roadmap.tools.length > 0 ? (
+                            roadmap.tools.map((tool, index) => (
+                              <div key={index} className="flex items-start space-x-2 text-xs text-slate-600 dark:text-slate-400">
+                                <div className="w-1 h-1 bg-slate-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                                <span>{tool}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-xs text-slate-500 dark:text-slate-500 italic">
+                              No tools and materials specified
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Common Pitfalls */}
+                    {roadmap.commonPitfalls && (
+                      <Card className="border border-slate-200 dark:border-slate-700">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm text-slate-800 dark:text-slate-200 flex items-center space-x-2">
+                            <AlertCircle className="h-3 w-3 text-slate-600" />
+                            <span>Common Pitfalls</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                            {roadmap.commonPitfalls}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

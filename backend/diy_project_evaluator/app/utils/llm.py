@@ -11,7 +11,7 @@ API_URL = os.getenv("LLM_API_URL", "https://openrouter.ai/api/v1/chat/completion
 API_KEY = os.getenv("LLM_API_KEY")
 
 # Use a free model by default
-MODEL_NAME = os.getenv("MODEL_NAME", "deepseek/deepseek-r1-0528:free")
+MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/llama-3.1-8b-instruct:free")
 
 print(f"Debug - Environment variables:")
 print(f"LLM_API_URL: {API_URL}")

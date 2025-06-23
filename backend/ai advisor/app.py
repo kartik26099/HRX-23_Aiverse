@@ -5,6 +5,7 @@ import os
 import uuid
 import json
 import logging
+import asyncio
 from werkzeug.utils import secure_filename
 from schemas import ChatMessage
 from advisor import career_advisor_response, generate_quiz_from_context
@@ -16,6 +17,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# CORS configuration
+CORS(app, origins=[
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:3000",  # Keep for backward compatibility
+    "http://127.0.0.1:3000"   # Keep for backward compatibility
+])
 
 # BRUTE FORCE CORS - Allow everything
 @app.after_request
@@ -48,7 +57,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/api/advisor', methods=['POST'])
-async def advisor():
+def advisor():
     """
     Handle text-based chat messages with document context awareness
     """
@@ -165,8 +174,13 @@ async def advisor():
         if document_context:
             enhanced_message = f"{message}\n\nContext from uploaded document:\n{document_context}"
         
-        # Get response from career advisor - NOW WITH AWAIT
-        response = await career_advisor_response(enhanced_message, chat_history)
+        # Get response from career advisor - Run async function in sync context
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            response = loop.run_until_complete(career_advisor_response(enhanced_message, chat_history))
+        finally:
+            loop.close()
         
         # Update session
         chat_sessions[session_id].append(ChatMessage(role="user", content=message))
@@ -179,7 +193,7 @@ async def advisor():
         return jsonify({"response": "I'm sorry, I encountered an error. Please try again.", "error": str(e)}), 500
 
 @app.route('/api/upload', methods=['POST'])
-async def upload_file():
+def upload_file():
     """
     Handle file uploads with document caching
     """
@@ -203,8 +217,13 @@ async def upload_file():
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{session_id}_{filename}")
             file.save(file_path)
             
-            # Process the document and get analysis
-            result = await process_document(file_path, filename)
+            # Process the document and get analysis - Run async function in sync context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(process_document(file_path, filename))
+            finally:
+                loop.close()
             
             # Initialize session if doesn't exist
             if session_id not in chat_sessions:
@@ -263,7 +282,7 @@ async def upload_file():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/generate-quiz', methods=['POST'])
-async def generate_quiz():
+def generate_quiz():
     """
     Generates a quiz based on the chat history or a specified topic.
     """
@@ -275,8 +294,13 @@ async def generate_quiz():
         # Convert history to ChatMessage objects for the context
         chat_history = [ChatMessage(role=msg['role'], content=msg['content']) for msg in history]
 
-        # Get the quiz from the advisor logic
-        quiz_json = await generate_quiz_from_context(topic, chat_history)
+        # Get the quiz from the advisor logic - Run async function in sync context
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            quiz_json = loop.run_until_complete(generate_quiz_from_context(topic, chat_history))
+        finally:
+            loop.close()
 
         return jsonify(quiz_json)
 

@@ -3,17 +3,16 @@
 # Server Configuration
 PORT=8000
 
-# LLM API Configuration (Optional - will use mock responses if not provided)
-# Get a free API key from https://openrouter.ai/
+# LLM API Configuration
 LLM_API_URL=https://openrouter.ai/api/v1/chat/completions
-LLM_API_KEY=your_openrouter_api_key_here
+LLM_API_KEY=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
 
 # Model Configuration
-MODEL_NAME=deepseek/deepseek-r1-0528:free
+MODEL_NAME=meta-llama/llama-3.1-8b-instruct:free
 
 # File Upload Configuration
 MAX_FILE_SIZE=50MB
 UPLOAD_DIR=uploads
 
 # CORS Configuration
-ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000 
+ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001 

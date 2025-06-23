@@ -1,0 +1,23 @@
+# Core web framework
+Flask==3.1.0
+flask-cors==5.0.1
+Werkzeug==3.1.3
+
+# HTTP client for OpenRouter API
+httpx==0.28.1
+
+# Environment variable management
+python-dotenv==1.1.0
+
+# Document processing
+python-docx==1.1.2
+PyPDF2==3.0.1
+
+# File handling
+python-multipart==0.0.20
+
+# Logging and utilities
+colorama==0.4.6
+
+# Async support
+asyncio 

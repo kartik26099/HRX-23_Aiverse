@@ -1,0 +1,17 @@
+# Twilio Configuration for SMS Reminders
+# Get these from your Twilio Console: https://console.twilio.com/
+
+# Your Twilio Account SID
+TWILIO_ACCOUNT_SID=your_account_sid_here
+
+# Your Twilio Auth Token
+TWILIO_AUTH_TOKEN=your_auth_token_here
+
+# Your Twilio Phone Number (must be verified)
+TWILIO_PHONE_NUMBER=+1234567890
+
+# Optional: Hugging Face API Token for better AI responses
+HUGGINGFACE_API_TOKEN=      
+
+# Optional: OpenAI API Key for advanced AI features
+OPENAI_API_KEY=your_openai_key_here 

@@ -11,8 +11,20 @@ GROQ_API_KEY=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
 GEMINI_API_KEY=AIzaSyCUWotG2uNcFeu2Gj-JaOGE9C6uaM9yZ3M
 SCRAPINGDOG_API_KEY=6810d07d05e7d91c4e5ed577
 
-# AI Library Service
+# AI Library Service - Primary API
 Scholarly_api=6810d07d05e7d91c4e5ed577
+
+# AI Library Service - Alternative APIs (for when primary API reaches limits)
+SCRAPINGDOG_BACKUP_KEY=your_backup_scrapingdog_key_here
+SERPAPI_KEY=your_serpapi_key_here
+RAPIDAPI_KEY=your_rapidapi_key_here
+
+# AI Library Service - Configuration
+CACHE_DURATION=3600
+CACHE_ENABLED=true
+FALLBACK_ENABLED=true
+RATE_LIMIT_DELAY=1.0
+REQUEST_TIMEOUT=15
 
 # AI Course Service
 gemini_api_key_research=AIzaSyCUWotG2uNcFeu2Gj-JaOGE9C6uaM9yZ3M

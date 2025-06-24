@@ -94,6 +94,13 @@ interface ProjectRoadmap {
     }>
     description?: string
   }
+  flowchart?: {
+    success: boolean
+    dot_code?: string
+    image_base64?: string
+    description?: string
+    error?: string
+  }
 }
 
 interface ApiResponse {
@@ -154,6 +161,13 @@ interface ApiResponse {
       version: string
     }>
     description?: string
+  }
+  flowchart?: {
+    success: boolean
+    dot_code?: string
+    image_base64?: string
+    description?: string
+    error?: string
   }
 }
 
@@ -270,6 +284,7 @@ export default function DIYGeneratorPage() {
         },
         hardwareSuggestions: data.hardware_suggestions || undefined,
         softwareTools: data.software_tools || undefined,
+        flowchart: data.flowchart || undefined,
       }
       
       // Debug: Log the tools and materials data
@@ -278,6 +293,26 @@ export default function DIYGeneratorPage() {
       console.log('Full project data:', data.project_data)
 
       setRoadmap(transformedRoadmap)
+      
+      // Generate flowchart for the project
+      try {
+        const flowchartResponse = await fetch(`${BACKEND_URL}/api/generate-flowchart`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_data: transformedRoadmap }),
+        })
+        
+        if (flowchartResponse.ok) {
+          const flowchartData = await flowchartResponse.json()
+          if (flowchartData.success) {
+            setRoadmap(prev => prev ? { ...prev, flowchart: flowchartData } : prev)
+          }
+        }
+      } catch (flowchartError) {
+        console.error('Failed to generate flowchart:', flowchartError)
+        // Don't fail the entire request if flowchart generation fails
+      }
+      
       toast({
         title: "Roadmap Generated!",
         description: "Your personalized project roadmap has been created successfully.",
@@ -726,7 +761,7 @@ export default function DIYGeneratorPage() {
               <div className="mt-6">
                 <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                   
-                </Card>
+            </Card>
               </div>
             )}
           </div>
@@ -990,6 +1025,41 @@ export default function DIYGeneratorPage() {
                     )}
                   </div>
 
+                  {/* Project Flowchart - Enhanced */}
+                  {roadmap.flowchart && roadmap.flowchart.success && (
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
+                      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                        <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                          <BarChart3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <span>Project Workflow</span>
+                      </h3>
+                      
+                      <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-indigo-200 dark:border-indigo-700 shadow-sm">
+                        {roadmap.flowchart.image_base64 ? (
+                          <div className="flex flex-col items-center">
+                            <img 
+                              src={`data:image/png;base64,${roadmap.flowchart.image_base64}`}
+                              alt="Project Workflow Diagram"
+                              className="max-w-full h-auto rounded-lg shadow-md"
+                              style={{ maxHeight: '600px' }}
+                            />
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">
+                              AI-generated workflow diagram for your project
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                            <BarChart3 className="h-12 w-12 text-indigo-400 mx-auto mb-4" />
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                              Flowchart generation in progress...
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Prerequisites - Enhanced */}
                   {roadmap.prerequisites && roadmap.prerequisites.length > 0 && (
                     <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
@@ -1174,23 +1244,23 @@ export default function DIYGeneratorPage() {
                         </div>
                             </div>
                           )}
-                        </div>
+                    </div>
 
-                  {/* Next Steps */}
-                  {roadmap.nextSteps && (
+                    {/* Next Steps */}
+                    {roadmap.nextSteps && (
                     <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
                       <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
                         <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
                           <ArrowRight className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                         </div>
-                        <span>Next Steps & Extensions</span>
-                      </h3>
+                          <span>Next Steps & Extensions</span>
+                        </h3>
                       <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-indigo-200 dark:border-indigo-700">
                         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                          {roadmap.nextSteps}
-                        </p>
+                              {roadmap.nextSteps}
+                            </p>
                       </div>
-                    </div>
+                      </div>
                     )}
 
                     {/* Common Pitfalls */}
@@ -1199,7 +1269,7 @@ export default function DIYGeneratorPage() {
                       <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
                         <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
                           <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                        </div>
+                  </div>
                         <span>Common Pitfalls & Troubleshooting</span>
                       </h3>
                       <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-red-200 dark:border-red-700">
@@ -1219,7 +1289,7 @@ export default function DIYGeneratorPage() {
                         </div>
                         <span>GitHub Starter Templates</span>
                       </h3>
-                      <div className="space-y-4">
+                  <div className="space-y-4">
                         {roadmap.githubTemplates.repositories.map((repo, index) => (
                           <Card key={index} className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600">
                             <CardHeader>
@@ -1228,16 +1298,16 @@ export default function DIYGeneratorPage() {
                                   <span>{repo.name}</span>
                                   <ExternalLink className="h-4 w-4" />
                                 </a>
-                              </CardTitle>
+                          </CardTitle>
                               <CardDescription className="text-xs text-slate-600 dark:text-slate-400">{repo.desc}</CardDescription>
-                            </CardHeader>
+                        </CardHeader>
                             {repo.analysis && (
-                              <CardContent>
+                        <CardContent>
                                 <div className="space-y-3">
                                   <div className="flex items-center text-sm">
                                     <strong className="w-28 text-slate-700 dark:text-slate-300">Match Score:</strong>
                                     <Badge variant="secondary">{repo.analysis.match_score}</Badge>
-                                  </div>
+                              </div>
                                   <div className="flex items-start text-sm">
                                     <strong className="w-28 text-slate-700 dark:text-slate-300 flex-shrink-0">Useful For:</strong>
                                     <span className="text-slate-600 dark:text-slate-400">{repo.analysis.useful_for}</span>
@@ -1258,10 +1328,10 @@ export default function DIYGeneratorPage() {
                                       ))}
                                     </ul>
                                   </div>
-                                </div>
-                              </CardContent>
+                          </div>
+                        </CardContent>
                             )}
-                          </Card>
+                      </Card>
                         ))}
                       </div>
                     </div>
@@ -1320,19 +1390,19 @@ export default function DIYGeneratorPage() {
                                           <div className="flex items-center justify-between">
                                             <CardTitle className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                                               {component.name}
-                                            </CardTitle>
+                        </CardTitle>
                                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
                                               {component.cost}
                                             </Badge>
                                           </div>
-                                        </CardHeader>
+                      </CardHeader>
                                         <CardContent className="pt-0">
                                           <div className="space-y-3">
                                             <div className="grid grid-cols-2 gap-3 text-xs">
                                               <div className="bg-slate-50 dark:bg-slate-600 rounded p-2">
                                                 <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Quantity</div>
                                                 <div className="text-slate-600 dark:text-slate-400">{component.quantity}</div>
-                                              </div>
+                            </div>
                                               <div className="bg-slate-50 dark:bg-slate-600 rounded p-2">
                                                 <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Purpose</div>
                                                 <div className="text-slate-600 dark:text-slate-400">{component.purpose}</div>
@@ -1387,11 +1457,11 @@ export default function DIYGeneratorPage() {
                                                     </a>
                                                   ))}
                                                 </div>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </CardContent>
-                                      </Card>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                                     ))}
                                   </div>
                                 </div>
@@ -1514,12 +1584,12 @@ export default function DIYGeneratorPage() {
                                     <div className="flex items-center justify-between">
                                       <CardTitle className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                                         {component.name}
-                                      </CardTitle>
+                          </CardTitle>
                                       <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
                                         {component.cost}
                                       </Badge>
                                     </div>
-                                  </CardHeader>
+                        </CardHeader>
                                   <CardContent className="pt-0">
                                     <div className="space-y-3">
                                       <div className="grid grid-cols-2 gap-3 text-xs">
@@ -1584,14 +1654,14 @@ export default function DIYGeneratorPage() {
                                         </div>
                                       )}
                                     </div>
-                                  </CardContent>
-                                </Card>
+                        </CardContent>
+                      </Card>
                               ))}
                             </div>
                           </div>
                         </div>
-                      )}
-                    </div>
+                    )}
+                  </div>
                   )}
                 </div>
               </CardContent>

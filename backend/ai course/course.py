@@ -33,6 +33,55 @@ except Exception as e:
 def test():
     return jsonify({"message": "Server is working!"}), 200
 
+@app.route('/test-youtube-api', methods=['GET'])
+def test_youtube_api():
+    """Test endpoint to verify YouTube API functionality"""
+    try:
+        if not SCRAPINGDOG_API_KEY:
+            return jsonify({
+                "status": "error",
+                "message": "SCRAPINGDOG_API_KEY not configured",
+                "fallback": "Mock videos will be used"
+            }), 200
+        
+        # Test with a simple query
+        search_url = "https://api.scrapingdog.com/youtube/search"
+        params = {
+            'api_key': SCRAPINGDOG_API_KEY,
+            'search_query': 'Node.js tutorial',
+            'country': 'us'
+        }
+        
+        response = requests.get(search_url, params=params, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            videos_data = data if isinstance(data, list) else data.get('results', [])
+            
+            return jsonify({
+                "status": "success",
+                "api_key_configured": True,
+                "response_status": response.status_code,
+                "videos_found": len(videos_data) if isinstance(videos_data, list) else 0,
+                "sample_response": data[:2] if isinstance(data, list) and len(data) > 0 else "No videos found"
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "api_key_configured": True,
+                "response_status": response.status_code,
+                "error_message": response.text,
+                "fallback": "Mock videos will be used"
+            }), 200
+            
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "api_key_configured": bool(SCRAPINGDOG_API_KEY),
+            "error": str(e),
+            "fallback": "Mock videos will be used"
+        }), 200
+
 @app.route('/generatecourse', methods=['POST'])
 def generate_course():
     try:
@@ -213,6 +262,12 @@ def generate_mock_videos_for_topic(topic):
             video_id = "fis26HvvDII"  # MySQL tutorial
         elif "web" in topic.lower() and "develop" in topic.lower():
             video_id = "OK_JCtrrv-c"  # Web development
+        elif "node" in topic.lower() and "js" in topic.lower():
+            video_id = "Oe421EPjeBE"  # Node.js tutorial
+        elif "express" in topic.lower():
+            video_id = "L72fhGm1tfE"  # Express.js tutorial
+        elif "full stack" in topic.lower():
+            video_id = "YS4e4q9oBaU"  # Full stack development
         
         # Create the video object
         video = {
@@ -267,15 +322,21 @@ def add_youtube_videos(course):
                                 'channel': video.get('channel', {}).get('name', 'N/A') if isinstance(video.get('channel'), dict) else 'N/A',
                                 'duration': video.get('length', 'N/A'),
                             })
-                    module['videos'] = videos
-                    print(f"Found {len(videos)} videos for '{query}'")
+                    
+                    # Use consistent field name
+                    if videos:
+                        module['recommended_videos'] = videos
+                        print(f"Found {len(videos)} videos for '{query}'")
+                    else:
+                        print(f"No videos found for '{query}', using mock videos")
+                        module['recommended_videos'] = generate_mock_videos_for_topic(query)
                 else:
                     print(f"Error fetching videos for '{query}': {response.status_code} - {response.text}")
-                    module['videos'] = generate_mock_videos_for_topic(query)
+                    module['recommended_videos'] = generate_mock_videos_for_topic(query)
 
             except requests.exceptions.RequestException as e:
                 print(f"Request failed for '{query}': {e}")
-                module['videos'] = generate_mock_videos_for_topic(query)
+                module['recommended_videos'] = generate_mock_videos_for_topic(query)
                 
     except Exception as e:
         print(f"An unexpected error occurred in add_youtube_videos: {e}")

@@ -11,6 +11,11 @@ import time
 import os
 import logging
 import base64
+import graphviz
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -26,10 +31,19 @@ CORS(app, origins=[
 
 # Configuration - Use environment variables for security
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', "AIzaSyDqavbfyVbns6G903xrJFMjNkP-2KzcQjY")
-SCRAPINGDOG_API_KEY = os.getenv('SCRAPINGDOG_API_KEY', "6810d07d05e7d91c4e5ed577")
+SCRAPINGDOG_API_KEY = os.getenv('SCRAPINGDOG_API_KEY', "685a76e11d2914e60db6dd2c")
 
 # GitHub API credentials
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', "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")
+
+# OpenRouter API credentials for flowchart generation
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', "sk-or-v1-1234567890abcdef")  # Replace with your actual key
+OPENROUTER_MODEL = "meta-llama/llama-3.1-8b-instruct:free"
+
+# Azure LLM credentials for flowchart generation
+AZURE_ENDPOINT = os.getenv('AZURE_ENDPOINT', "https://models.github.ai/inference")
+AZURE_MODEL = os.getenv('AZURE_MODEL', "meta/Llama-4-Scout-17B-16E-Instruct")
+AZURE_TOKEN = os.getenv('AZURE_TOKEN', "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")
 
 # Configure Gemini AI
 try:
@@ -1830,52 +1844,188 @@ Return only the Mermaid code, no additional text.
 def create_basic_mermaid_flowchart(project_data):
     """Create a basic Mermaid flowchart as fallback"""
     try:
-        # Extract phases from project roadmap
-        phases = []
-        roadmap_text = project_data.get('project_roadmap', '')
-        if roadmap_text:
-            # Try to split by PHASE
-            if 'PHASE' in roadmap_text:
-                phase_sections = roadmap_text.split('PHASE')
-                for i, section in enumerate(phase_sections[1:], 1):
-                    lines = section.split('\n')
-                    title = lines[0].replace(f'{i}:', '').strip() if lines else f'Phase {i}'
-                    phases.append(title)
+        title = project_data.get('title', 'Project Workflow')
+        days = project_data.get('days', [])
         
-        if not phases:
-            phases = ['Setup', 'Development', 'Testing', 'Deploy']
+        flowchart = f"""
+graph TD
+    A[Start: {title}] --> B[Project Setup]
+    B --> C[Development Phase]
+    C --> D[Testing & Debugging]
+    D --> E[Deployment]
+    E --> F[Project Complete]
+    
+    style A fill:#a2d9ce
+    style F fill:#a2d9ce
+    style B fill:#aed6f1
+    style C fill:#aed6f1
+    style D fill:#aed6f1
+    style E fill:#aed6f1
+        """
         
-        # Extract tools
-        tools = []
-        tools_text = project_data.get('tools_and_materials', '')
-        if tools_text:
-            tools = [line.replace('-', '').strip() for line in tools_text.split('\n') if line.strip().startswith('-')][:5]
-        
-        # Create basic flowchart
-        flowchart = "flowchart TD\n"
-        flowchart += "    A[Start] --> B[Setup & Planning]\n"
-        
-        for i, phase in enumerate(phases[:4], 1):
-            if i == 1:
-                flowchart += f"    B --> C[Phase {i}: {phase}]\n"
-            elif i < len(phases[:4]):
-                flowchart += f"    C --> D[Phase {i}: {phase}]\n"
-                flowchart += f"    D --> E[Complete]\n"
-        
-        # Add tools
-        for i, tool in enumerate(tools[:3]):
-            flowchart += f"    F{i}[{tool}] --> B\n"
-        
-        return flowchart
-        
+        return flowchart.strip()
     except Exception as e:
         logger.error(f"Error creating basic Mermaid flowchart: {str(e)}")
-        return """flowchart TD
-    A[Start] --> B[Setup & Planning]
-    B --> C[Development]
-    C --> D[Testing]
-    D --> E[Complete]
-    F[Tools] --> B"""
+        return "graph TD\n    A[Error generating flowchart]"
+
+def generate_project_description_for_flowchart(project_data):
+    """Generate a detailed project description for flowchart generation"""
+    try:
+        if not model:
+            return "Project workflow description"
+            
+        title = project_data.get('title', 'DIY Project')
+        days = project_data.get('days', [])
+        tools = project_data.get('tools', [])
+        materials = project_data.get('materials', [])
+        
+        # Create a detailed description of the project workflow
+        workflow_description = f"""
+        Project: {title}
+        
+        This project involves the following workflow:
+        
+        Phase 1 - Setup and Planning:
+        - Project initialization and environment setup
+        - Gathering required tools and materials: {', '.join(tools[:5])}
+        - Understanding project requirements and objectives
+        
+        Phase 2 - Development Process:
+        """
+        
+        for i, day in enumerate(days[:5], 1):  # Limit to first 5 days for clarity
+            workflow_description += f"""
+        Day {i}: {day.get('title', 'Development')}
+        - Tasks: {', '.join(day.get('tasks', [])[:3])}
+        - Duration: {day.get('duration', '1 day')}
+        """
+        
+        workflow_description += """
+        
+        Phase 3 - Testing and Refinement:
+        - Testing the implemented features
+        - Debugging and fixing issues
+        - Performance optimization
+        
+        Phase 4 - Finalization:
+        - Final testing and validation
+        - Documentation and cleanup
+        - Project completion and delivery
+        
+        The process follows a systematic approach from initial setup through development, testing, and final delivery.
+        """
+        
+        return workflow_description
+        
+    except Exception as e:
+        logger.error(f"Error generating project description: {str(e)}")
+        return "Project workflow description"
+
+def generate_flowchart_from_project(project_data):
+    """Generate a flowchart using OpenRouter LLM based on project data"""
+    try:
+        # Generate project description
+        project_description = generate_project_description_for_flowchart(project_data)
+        
+        # System prompt for flowchart generation
+        system_prompt = """
+        You are a visual design expert specializing in creating beautiful, modern, and highly readable flowcharts using the Graphviz DOT language.
+        Your goal is to transform user text into a professional and aesthetically pleasing diagram.
+
+        *MANDATORY DOT STRUCTURE AND STYLE GUIDE:*
+
+        1.  *Overall Graph:*
+            -   Use rankdir=TB; for a top-to-bottom flow.
+            -   Set a soft background color: bgcolor="#f7f9f9";
+            -   Use curved lines for a smoother look: splines=ortho;
+            -   Ensure good spacing between node layers and nodes: nodesep=0.6; ranksep=0.8;
+
+        2.  *Default Node Style (for all nodes):*
+            -   shape=box, style="filled,rounded", fontname="Helvetica", penwidth=1.5, color="#34495e"
+
+        3.  *Default Edge Style (for all arrows):*
+            -   color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"
+
+        4.  *Specific Node Types (use these fill colors and shapes):*
+            -   *Start/End Nodes:* Use shape=ellipse and fillcolor="#a2d9ce" (Mint Green).
+            -   *Process/Action Nodes:* Use shape=box and fillcolor="#aed6f1" (Sky Blue).
+            -   *Decision Nodes (if/then):* Use shape=diamond and fillcolor="#fdebd0" (Pale Orange).
+            -   *Error/Stop/Negative Outcome Nodes:* Use shape=box and fillcolor="#f5b7b1" (Soft Red).
+            -   *Database/Data Nodes:* Use shape=cylinder and fillcolor="#d7dbdd" (Light Grey).
+
+        *YOUR TASK:*
+        Analyze the user's text. Generate ONLY the DOT language code that implements the described process using the styles defined above. Keep labels concise. Enclose the final code in a single markdown block.
+        """
+        
+        # Generate flowchart using OpenRouter API
+        openrouter_url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:5000",
+            "X-Title": "DIY Project Generator"
+        }
+        
+        payload = {
+            "model": OPENROUTER_MODEL,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": project_description}
+            ],
+            "temperature": 0.1,
+            "max_tokens": 1500
+        }
+        
+        response = requests.post(openrouter_url, headers=headers, json=payload, timeout=60)
+        
+        if response.status_code != 200:
+            logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+            return {
+                'success': False,
+                'error': f"OpenRouter API error: {response.status_code}",
+                'description': project_description
+            }
+        
+        response_data = response.json()
+        dot_string = response_data['choices'][0]['message']['content'].strip()
+        
+        # Clean up the DOT string
+        match = re.search(r'(dot)?(.*)', dot_string, re.DOTALL)
+        if match:
+            dot_string = match.group(2).strip()
+        
+        # Generate PNG image
+        try:
+            src = graphviz.Source(dot_string)
+            rendered_path = src.render("project_flowchart", format='png', cleanup=True)
+            
+            # Read the generated image and convert to base64
+            with open(rendered_path, "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode()
+            
+            return {
+                'success': True,
+                'dot_code': dot_string,
+                'image_base64': encoded_string,
+                'description': project_description
+            }
+            
+        except Exception as e:
+            logger.error(f"Error rendering flowchart: {str(e)}")
+            return {
+                'success': False,
+                'error': f"Failed to render flowchart: {str(e)}",
+                'dot_code': dot_string,
+                'description': project_description
+            }
+            
+    except Exception as e:
+        logger.error(f"Error generating flowchart: {str(e)}")
+        return {
+            'success': False,
+            'error': f"Failed to generate flowchart: {str(e)}",
+            'description': generate_project_description_for_flowchart(project_data)
+        }
 
 # API Routes - Pure API backend for frontend integration
 @app.route('/api/extract-video-id', methods=['POST'])
@@ -2028,38 +2178,37 @@ def api_available_languages():
 
 @app.route('/api/generate-excalidraw', methods=['POST'])
 def api_generate_excalidraw():
-    """Generate Excalidraw diagram for a project"""
+    """Generate Excalidraw diagram for project"""
     try:
         data = request.get_json()
+        project_data = data.get('project_data', {})
         
-        if not data or 'project_data' not in data:
-            return jsonify({
-                'success': False,
-                'error': 'Project data is required'
-            }), 400
+        if not project_data:
+            return jsonify({'success': False, 'error': 'No project data provided'})
         
-        project_data = data['project_data']
-        
-        # Generate the diagram
-        diagram_data = generate_excalidraw_diagram(project_data)
-        
-        if not diagram_data:
-            return jsonify({
-                'success': False,
-                'error': 'Failed to generate diagram'
-            }), 500
-        
-        return jsonify({
-            'success': True,
-            'diagram_data': diagram_data
-        })
+        result = generate_excalidraw_diagram(project_data)
+        return jsonify(result)
         
     except Exception as e:
-        logger.error(f"Error in generate-excalidraw endpoint: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        logger.error(f"Error generating Excalidraw diagram: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/generate-flowchart', methods=['POST'])
+def api_generate_flowchart():
+    """Generate flowchart for project"""
+    try:
+        data = request.get_json()
+        project_data = data.get('project_data', {})
+        
+        if not project_data:
+            return jsonify({'success': False, 'error': 'No project data provided'})
+        
+        result = generate_flowchart_from_project(project_data)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error generating flowchart: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/test-fallback', methods=['POST'])
 def test_fallback():
@@ -2111,6 +2260,7 @@ def api_info():
             'POST /api/get-transcript': 'Get YouTube video transcript',
             'POST /api/available-languages': 'Get available transcript languages',
             'POST /api/generate-excalidraw': 'Generate Excalidraw diagram',
+            'POST /api/generate-flowchart': 'Generate flowchart',
             'GET /health': 'Health check',
             'GET /': 'API information'
         },

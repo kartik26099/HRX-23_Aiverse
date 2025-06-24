@@ -3,6 +3,8 @@ import requests
 import os
 import json
 from flask_cors import CORS
+import time
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app, origins=[
@@ -11,6 +13,64 @@ CORS(app, origins=[
     "http://localhost:3000",  # Keep for backward compatibility
     "http://127.0.0.1:3000"   # Keep for backward compatibility
 ])
+
+# Configuration
+API_CONFIG = {
+    'scrapingdog': {
+        'scholar_url': "https://api.scrapingdog.com/google_scholar",
+        'youtube_url': "https://api.scrapingdog.com/youtube/search",
+        'api_key': os.getenv('Scholarly_api')
+    },
+    'fallback': {
+        'enabled': True,
+        'cache_duration': 3600  # 1 hour cache
+    }
+}
+
+# Simple in-memory cache (in production, use Redis or similar)
+cache = {}
+
+def get_cached_data(key):
+    """Get data from cache if not expired"""
+    if key in cache:
+        data, timestamp = cache[key]
+        if time.time() - timestamp < API_CONFIG['fallback']['cache_duration']:
+            return data
+    return None
+
+def set_cached_data(key, data):
+    """Store data in cache with timestamp"""
+    cache[key] = (data, time.time())
+
+def get_fallback_scholar_data(query):
+    """Provide fallback academic data when API is unavailable"""
+    return [
+        {
+            'title': f'Research on {query}',
+            'authors': 'Various Authors',
+            'abstract': f'This is a placeholder for research related to {query}. The actual API data is currently unavailable due to rate limits.',
+            'citations': 'N/A',
+            'year': datetime.now().year,
+            'url': '#',
+            'source': 'Fallback Data'
+        }
+    ]
+
+def get_fallback_youtube_data(query):
+    """Provide fallback YouTube data when API is unavailable"""
+    return [
+        {
+            'title': f'Video about {query}',
+            'link': '#',
+            'thumbnail': '',
+            'channel': 'Various Channels',
+            'views': 'N/A',
+            'published_date': 'N/A',
+            'length': 'N/A',
+            'description': f'This is a placeholder for YouTube content related to {query}. The actual API data is currently unavailable due to rate limits.',
+            'source': 'Fallback Data'
+        }
+    ]
 
 def clean_youtube_data(data):
     """Clean and extract relevant YouTube data"""
@@ -35,7 +95,8 @@ def clean_youtube_data(data):
                         'views': item.get('views', ''),
                         'published_date': item.get('published_date', ''),
                         'length': item.get('length', ''),
-                        'description': item.get('description', '')
+                        'description': item.get('description', ''),
+                        'source': 'YouTube API'
                     }
                     videos.append(video)
     
@@ -51,12 +112,44 @@ def clean_youtube_data(data):
                     'views': item.get('views', ''),
                     'published_date': item.get('published_date', ''),
                     'length': item.get('length', ''),
-                    'description': item.get('description', '')
+                    'description': item.get('description', ''),
+                    'source': 'YouTube API'
                 }
                 videos.append(video)
     
     print(f"Found {len(videos)} videos")
     return videos
+
+def make_api_request(url, params, service_name):
+    """Make API request with proper error handling"""
+    try:
+        print(f"Making {service_name} API request: {url} with params: {params}")
+        response = requests.get(url, params=params, timeout=15)
+        print(f"{service_name} API response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            return response.json(), None
+        elif response.status_code == 403:
+            error_msg = f"{service_name} API limit reached. Please upgrade your account or try again later."
+            print(f"{service_name} API error: {error_msg}")
+            return None, error_msg
+        else:
+            error_msg = f"{service_name} API error: {response.status_code} - {response.text}"
+            print(error_msg)
+            return None, error_msg
+            
+    except requests.exceptions.Timeout:
+        error_msg = f"{service_name} API request timed out"
+        print(error_msg)
+        return None, error_msg
+    except requests.exceptions.RequestException as e:
+        error_msg = f"{service_name} API request failed: {str(e)}"
+        print(error_msg)
+        return None, error_msg
+    except Exception as e:
+        error_msg = f"Unexpected error with {service_name} API: {str(e)}"
+        print(error_msg)
+        return None, error_msg
 
 @app.route('/search', methods=['GET'])
 def search_api():
@@ -64,73 +157,94 @@ def search_api():
     if not query:
         return jsonify({"error": "Query parameter is required"}), 400
     
-    # Get API key from environment variable or use the default
-    api_key = os.getenv('Scholarly_api')
+    # Check cache first
+    cache_key = f"search_{query.lower().replace(' ', '_')}"
+    cached_result = get_cached_data(cache_key)
+    if cached_result:
+        print(f"Returning cached result for query: {query}")
+        return jsonify(cached_result)
     
     results = {
         'scholar': [],
-        'youtube': []
+        'youtube': [],
+        'api_status': {
+            'scholar': 'unknown',
+            'youtube': 'unknown'
+        },
+        'errors': []
     }
     
     # Google Scholar API request
-    scholar_url = "https://api.scrapingdog.com/google_scholar"
     scholar_params = {
-        "api_key": api_key,
+        "api_key": API_CONFIG['scrapingdog']['api_key'],
         "query": query,
         "language": "en",
         "page": 0,
         "results": 10
     }
     
-    try:
-        print(f"Making Scholar API request: {scholar_url} with params: {scholar_params}")
-        scholar_response = requests.get(scholar_url, params=scholar_params, timeout=10)
-        print(f"Scholar API response status: {scholar_response.status_code}")
-        
-        if scholar_response.status_code == 200:
-            scholar_data = scholar_response.json()
-            if isinstance(scholar_data, dict) and 'scholar_results' in scholar_data:
-                results['scholar'] = scholar_data['scholar_results']
-            else:
-                print("Unexpected Scholar API response format:", scholar_data)
+    scholar_data, scholar_error = make_api_request(
+        API_CONFIG['scrapingdog']['scholar_url'], 
+        scholar_params, 
+        'Scholar'
+    )
+    
+    if scholar_data:
+        if isinstance(scholar_data, dict) and 'scholar_results' in scholar_data:
+            results['scholar'] = scholar_data['scholar_results']
+            results['api_status']['scholar'] = 'success'
         else:
-            print(f"Scholar API error response: {scholar_response.text}")
-    except Exception as e:
-        print(f"Scholar API error: {str(e)}")
+            print("Unexpected Scholar API response format:", scholar_data)
+            results['api_status']['scholar'] = 'error'
+            results['errors'].append("Unexpected Scholar API response format")
+    else:
+        results['api_status']['scholar'] = 'error'
+        results['errors'].append(scholar_error)
+        # Use fallback data if API fails
+        if API_CONFIG['fallback']['enabled']:
+            results['scholar'] = get_fallback_scholar_data(query)
+            results['api_status']['scholar'] = 'fallback'
     
     # YouTube API request
-    youtube_url = "https://api.scrapingdog.com/youtube/search"
     youtube_params = {
-        "api_key": api_key,
+        "api_key": API_CONFIG['scrapingdog']['api_key'],
         "search_query": query,
         "country": "us",
         "language": "en",
         "sp": "",
     }
     
-    try:
-        print(f"Making YouTube API request: {youtube_url} with params: {youtube_params}")
-        youtube_response = requests.get(youtube_url, params=youtube_params, timeout=10)
-        print(f"YouTube API response status: {youtube_response.status_code}")
-        
-        if youtube_response.status_code == 200:
-            youtube_data = youtube_response.json()
-            results['youtube'] = clean_youtube_data(youtube_data)
-        else:
-            print(f"YouTube API error response: {youtube_response.text}")
-    except Exception as e:
-        print(f"YouTube API error: {str(e)}")
+    youtube_data, youtube_error = make_api_request(
+        API_CONFIG['scrapingdog']['youtube_url'], 
+        youtube_params, 
+        'YouTube'
+    )
     
-    # Include response sizes for debugging
+    if youtube_data:
+        results['youtube'] = clean_youtube_data(youtube_data)
+        results['api_status']['youtube'] = 'success'
+    else:
+        results['api_status']['youtube'] = 'error'
+        results['errors'].append(youtube_error)
+        # Use fallback data if API fails
+        if API_CONFIG['fallback']['enabled']:
+            results['youtube'] = get_fallback_youtube_data(query)
+            results['api_status']['youtube'] = 'fallback'
+    
+    # Include response info for debugging
     response_info = {
         'query': query,
         'scholar_results_count': len(results['scholar']),
         'youtube_results_count': len(results['youtube']),
+        'timestamp': datetime.now().isoformat(),
+        'cache_hit': False
     }
-    print(f"Response info: {response_info}")
     
     # Add the response info to the results
     results['debug_info'] = response_info
+    
+    # Cache the result
+    set_cached_data(cache_key, results)
     
     return jsonify(results)
 
@@ -138,36 +252,68 @@ def search_api():
 def test_youtube():
     """Endpoint to directly test the YouTube API"""
     query = request.args.get('query', 'python programming')
-    api_key = os.getenv('Scholarly_api')
     
-    youtube_url = "https://api.scrapingdog.com/youtube/search"
     youtube_params = {
-        "api_key": api_key,
+        "api_key": API_CONFIG['scrapingdog']['api_key'],
         "search_query": query,
         "country": "us",
         "language": "en",
         "sp": "",
     }
     
-    try:
-        youtube_response = requests.get(youtube_url, params=youtube_params, timeout=10)
-        if youtube_response.status_code == 200:
-            youtube_data = youtube_response.json()
-            # Return raw response and processed videos
-            return jsonify({
-                "raw_response": youtube_data,
-                "processed_videos": clean_youtube_data(youtube_data)
-            })
-        else:
-            return jsonify({
-                "error": "YouTube API request failed",
-                "status_code": youtube_response.status_code,
-                "response": youtube_response.text
-            })
-    except Exception as e:
-        return jsonify({"error": str(e)})
+    youtube_data, youtube_error = make_api_request(
+        API_CONFIG['scrapingdog']['youtube_url'], 
+        youtube_params, 
+        'YouTube'
+    )
+    
+    if youtube_data:
+        return jsonify({
+            "raw_response": youtube_data,
+            "processed_videos": clean_youtube_data(youtube_data),
+            "status": "success"
+        })
+    else:
+        return jsonify({
+            "error": youtube_error,
+            "status": "error",
+            "fallback_available": API_CONFIG['fallback']['enabled']
+        })
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "api_config": {
+            "scrapingdog_configured": bool(API_CONFIG['scrapingdog']['api_key']),
+            "fallback_enabled": API_CONFIG['fallback']['enabled']
+        }
+    })
+
+@app.route('/cache/clear', methods=['POST'])
+def clear_cache():
+    """Clear the cache"""
+    global cache
+    cache.clear()
+    return jsonify({"message": "Cache cleared successfully"})
+
+@app.route('/cache/stats', methods=['GET'])
+def cache_stats():
+    """Get cache statistics"""
+    return jsonify({
+        "cache_size": len(cache),
+        "cache_keys": list(cache.keys()),
+        "cache_config": {
+            "duration": API_CONFIG['fallback']['cache_duration'],
+            "enabled": API_CONFIG['fallback']['enabled']
+        }
+    })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 4001))
-    print(f"Starting server on port {port}")
-    app.run(host='0.0.0.0', port=port, debug=True)  # Enable debug mode for development
+    print(f"Starting AI Library server on port {port}")
+    print(f"API Configuration: {API_CONFIG['scrapingdog']['api_key'] is not None}")
+    print(f"Fallback enabled: {API_CONFIG['fallback']['enabled']}")
+    app.run(host='0.0.0.0', port=port, debug=True)

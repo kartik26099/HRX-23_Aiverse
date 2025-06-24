@@ -10,6 +10,7 @@ import json
 import time
 import os
 import logging
+import base64
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -24,8 +25,11 @@ CORS(app, origins=[
 ])
 
 # Configuration - Use environment variables for security
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', "AIzaSyBtv_7aN0kuhxUt4R3aK9X6g53SXe2gQAE")
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', "AIzaSyDqavbfyVbns6G903xrJFMjNkP-2KzcQjY")
 SCRAPINGDOG_API_KEY = os.getenv('SCRAPINGDOG_API_KEY', "6810d07d05e7d91c4e5ed577")
+
+# GitHub API credentials
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', "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")
 
 # Configure Gemini AI
 try:
@@ -263,25 +267,666 @@ def get_dataset_recommendations(topic, skill_level):
     """Get dataset recommendations for ML projects"""
     try:
         if not model:
-            return ["Sample dataset for practice"]
+            return ["Sample dataset from Kaggle", "UCI Machine Learning Repository"]
             
         prompt = f"""
-        Recommend 3-5 popular datasets for a {skill_level} level {topic} project.
-        Focus on well-known, accessible datasets that are good for learning.
-        
-        Return only the dataset names, one per line, nothing else.
+        Suggest 3-5 relevant datasets for a {skill_level} level {topic} project.
+        Focus on publicly available datasets from sources like Kaggle, UCI, or other open data repositories.
+        Return only the dataset names and sources, one per line.
         """
         
         response = model.generate_content(prompt)
-        datasets = [line.strip() for line in response.text.strip().split('\n') if line.strip()]
-        return datasets[:5]
+        datasets = response.text.strip().split('\n')
+        return [ds.strip() for ds in datasets if ds.strip()]
         
     except Exception as e:
         logger.error(f"Error getting dataset recommendations: {str(e)}")
-        return ["Sample dataset for practice"]
+        return ["Sample dataset from Kaggle", "UCI Machine Learning Repository"]
+
+def get_github_search_keywords(project_idea):
+    """Generate clean GitHub search keywords using LLM"""
+    try:
+        if not model:
+            return [project_idea]
+            
+        prompt = (
+            f"The user wants to build this project: \"{project_idea}\".\n"
+            "Suggest 2 to 3 simple GitHub search keywords to find existing relevant projects. "
+            "Avoid *, #, or punctuation. Return only plain search phrases like 'college portal react' or 'university dashboard'. "
+            "No numbering, no extra symbols. Just a list of clean search queries."
+        )
+
+        response = model.generate_content(prompt)
+        raw = response.text.strip()
+        keywords = [re.sub(r'^[\\-#]+\s', '', line).strip() for line in raw.splitlines() if line.strip()]
+        return keywords or [project_idea]  # Fallback to project idea
+        
+    except Exception as e:
+        logger.error(f"Error generating GitHub keywords: {str(e)}")
+        return [project_idea]
+
+def github_search(query):
+    """Search GitHub for repositories"""
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    tokens = re.sub(r'[^\w\s\-]', '', query).split()
+    joined_query = '+'.join([f'"{token}"' for token in tokens])
+    url = f"https://api.github.com/search/repositories?q={joined_query}+in:name,description&sort=best-match&order=desc"
+    
+    try:
+        res = requests.get(url, headers=headers, timeout=10)
+        res.raise_for_status()
+        items = res.json().get("items", [])[:3]
+    except requests.RequestException as e:
+        logger.error(f"GitHub API error: {e}")
+        return []
+
+    return [
+        {
+            "name": item["full_name"],
+            "url": item["html_url"],
+            "desc": item["description"] or "No description provided.",
+            "readme": get_readme(item["full_name"])
+        }
+        for item in items
+    ]
+
+def get_readme(repo_full_name):
+    """Fetch README content from GitHub repository"""
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    url = f"https://api.github.com/repos/{repo_full_name}/readme"
+    
+    try:
+        res = requests.get(url, headers=headers, timeout=10)
+        res.raise_for_status()
+        content = res.json().get("content", "")
+        return base64.b64decode(content).decode("utf-8", errors="ignore")[:500]  # Limit content size
+    except requests.RequestException:
+        return ""
+
+def explain_repo(project_idea, repo):
+    """Explain how a repository matches the project idea with structured data"""
+    try:
+        if not model:
+            return {
+                'useful_for': f"This repository {repo['name']} might be useful for your {project_idea} project.",
+                'match_score': 'moderate',
+                'pros': ['Available source code', 'Active repository'],
+                'cons': ['May need customization', 'Documentation varies'],
+                'customization': 'Requires adaptation to your specific needs'
+            }
+            
+        truncated_readme = repo['readme'][:500] if repo['readme'] else ""
+        prompt = (
+            f"The user is building: \"{project_idea}\"\n"
+            f"Here is a GitHub repo:\n"
+            f"Name: {repo['name']}\n"
+            f"Description: {repo['desc']}\n"
+            f"README (partial): {truncated_readme}\n\n"
+            "Analyze this repo and provide a structured response in this exact format:\n\n"
+            "USEFUL_FOR: [Brief explanation of what this repo is useful for]\n"
+            "MATCH_SCORE: [high/moderate/low]\n"
+            "PROS: [List 2-3 key advantages, one per line]\n"
+            "CONS: [List 2-3 limitations, one per line]\n"
+            "CUSTOMIZATION: [Brief note about what customization is needed]"
+        )
+
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+        
+        # Parse the structured response
+        sections = {}
+        current_section = None
+        current_content = []
+        
+        for line in text.split('\n'):
+            line = line.strip()
+            if line.startswith('USEFUL_FOR:'):
+                if current_section:
+                    sections[current_section] = '\n'.join(current_content).strip()
+                current_section = 'useful_for'
+                current_content = [line.replace('USEFUL_FOR:', '').strip()]
+            elif line.startswith('MATCH_SCORE:'):
+                if current_section:
+                    sections[current_section] = '\n'.join(current_content).strip()
+                current_section = 'match_score'
+                current_content = [line.replace('MATCH_SCORE:', '').strip()]
+            elif line.startswith('PROS:'):
+                if current_section:
+                    sections[current_section] = '\n'.join(current_content).strip()
+                current_section = 'pros'
+                current_content = []
+            elif line.startswith('CONS:'):
+                if current_section:
+                    sections[current_section] = '\n'.join(current_content).strip()
+                current_section = 'cons'
+                current_content = []
+            elif line.startswith('CUSTOMIZATION:'):
+                if current_section:
+                    sections[current_section] = '\n'.join(current_content).strip()
+                current_section = 'customization'
+                current_content = [line.replace('CUSTOMIZATION:', '').strip()]
+            elif line and current_section in ['pros', 'cons']:
+                current_content.append(line)
+        
+        if current_section:
+            sections[current_section] = '\n'.join(current_content).strip()
+        
+        # Clean up pros and cons lists
+        pros = [p.strip() for p in sections.get('pros', '').split('\n') if p.strip()] if sections.get('pros') else []
+        cons = [c.strip() for c in sections.get('cons', '').split('\n') if c.strip()] if sections.get('cons') else []
+        
+        return {
+            'useful_for': sections.get('useful_for', f"This repository {repo['name']} might be useful for your {project_idea} project."),
+            'match_score': sections.get('match_score', 'moderate'),
+            'pros': pros,
+            'cons': cons,
+            'customization': sections.get('customization', 'Requires adaptation to your specific needs')
+        }
+        
+    except Exception as e:
+        logger.error(f"Error explaining repo: {str(e)}")
+        return {
+            'useful_for': f"This repository {repo['name']} might be useful for your {project_idea} project.",
+            'match_score': 'moderate',
+            'pros': ['Available source code', 'Active repository'],
+            'cons': ['May need customization', 'Documentation varies'],
+            'customization': 'Requires adaptation to your specific needs'
+        }
+
+def suggest_tools(project_idea, category="software", project_title="", project_overview=""):
+    """Suggest tools, libraries, APIs, or hardware components for the project"""
+    try:
+        # Detect if it's a hardware project
+        hardware_keywords = ["arduino", "esp", "sensor", "iot", "raspberry", "microcontroller", "circuit", "hardware", "led", "motor", "servo", "breadboard", "resistor", "capacitor", "transistor"]
+        is_hardware = category == "hardware" or any(word in project_idea.lower() for word in hardware_keywords)
+        
+        if is_hardware:
+            # Use Gemini for hardware suggestions with circuit schematics and component search
+            if not model:
+                return {
+                    'type': 'hardware',
+                    'suggestions': 'Hardware suggestions unavailable - AI model not available',
+                    'components': [],
+                    'description': f'Hardware components for your {project_idea} project'
+                }
+            
+            # Use the specific project details for more targeted suggestions
+            project_context = f"Project Title: {project_title}\nProject Overview: {project_overview}\nUser Request: {project_idea}"
+            
+            prompt = (
+                f"Based on this specific project:\n{project_context}\n\n"
+                "Provide detailed hardware components and circuit design specifically for this project. "
+                "Make sure the suggestions are directly relevant to the project requirements.\n\n"
+                "IMPORTANT: Format your response in a very structured and organized way with clear sections. "
+                "Use proper formatting with clear headers and bullet points. "
+                "DO NOT use asterisks (*) or hash symbols (#) for formatting. "
+                "Use only plain text with clear section headers.\n\n"
+                "Provide a comprehensive and structured response with the following sections:\n\n"
+                "CIRCUIT DIAGRAM:\n"
+                "[Provide a clear, step-by-step description of the circuit layout and connections. "
+                "Include specific pin connections, component placements, and wiring instructions. "
+                "Make it easy to follow for someone building this specific project. "
+                "DO NOT include any diagram or textual representation sections.]\n\n"
+                "COMPONENT LIST:\n"
+                "[List each component in this exact format:\n"
+                "- Component Name - Quantity - Specific Purpose for this project - Estimated Cost in INR\n"
+                "- Component Name - Quantity - Specific Purpose for this project - Estimated Cost in INR\n"
+                "Continue with all necessary components for this specific project. "
+                "Use Indian Rupees (₹) for all prices.]\n\n"
+                "POWER REQUIREMENTS:\n"
+                "[Specify:\n"
+                "- Voltage requirements\n"
+                "- Current requirements\n"
+                "- Power supply recommendations\n"
+                "All specific to this project]\n\n"
+                "TOOLS NEEDED:\n"
+                "[List tools in this format:\n"
+                "- Tool Name - Specific purpose for this project\n"
+                "- Tool Name - Specific purpose for this project\n"
+                "Include only tools actually needed for this specific project]\n\n"
+                "LEARNING RESOURCES:\n"
+                "[List resources in this format:\n"
+                "- Resource Name - URL - What it specifically covers for this project\n"
+                "- Resource Name - URL - What it specifically covers for this project\n"
+                "Include tutorials, datasheets, and guides relevant to this specific project type. "
+                "Make sure URLs are complete and clickable.]\n\n"
+                "💡 IMPLEMENTATION NOTES:\n"
+                "[Provide 3-5 key implementation tips or considerations specific to this project. "
+                "Include any important warnings, best practices, or project-specific advice.]\n\n"
+                "Remember to keep all suggestions directly relevant to the specific project requirements. "
+                "Make the output well-structured and easy to read. "
+                "Use Indian currency (₹) for all prices and avoid any special formatting characters."
+            )
+            
+            response = model.generate_content(prompt)
+            hardware_suggestions = response.text.strip()
+            
+            # Extract components for shopping search
+            components = extract_components_from_suggestions(hardware_suggestions)
+            
+            # Get shopping links for components
+            shopping_links = get_component_shopping_links(components)
+            
+            return {
+                'type': 'hardware',
+                'suggestions': hardware_suggestions,
+                'components': components,
+                'shopping_links': shopping_links,
+                'description': f'Hardware components and resources for your {project_title} project'
+            }
+        
+        else:
+            # Use Gemini for software suggestions with more specific prompts
+            if not model:
+                return {
+                    'type': 'software',
+                    'tools': ['React (for frontend)', 'Node.js (for backend)', 'MongoDB (for database)'],
+                    'description': 'Consider using popular tools like React, Node.js, or Python libraries based on your project needs.'
+                }
+            
+            # Create a more specific prompt based on project details
+            project_context = f"Project Title: {project_title}\nProject Overview: {project_overview}\nUser Request: {project_idea}"
+            
+            # Analyze project type for more specific suggestions
+            project_lower = project_idea.lower()
+            
+            # Determine project type and add specific context
+            project_type_context = ""
+            if any(word in project_lower for word in ['weather', 'api', 'data']):
+                project_type_context = "This appears to be a data/API project. Focus on data fetching, API integration, and data visualization tools."
+            elif any(word in project_lower for word in ['chat', 'messaging', 'communication']):
+                project_type_context = "This appears to be a communication project. Focus on real-time communication, WebSocket, and messaging tools."
+            elif any(word in project_lower for word in ['e-commerce', 'shop', 'store', 'payment']):
+                project_type_context = "This appears to be an e-commerce project. Focus on payment processing, inventory management, and shopping cart tools."
+            elif any(word in project_lower for word in ['social', 'network', 'profile', 'user']):
+                project_type_context = "This appears to be a social networking project. Focus on user authentication, profile management, and social features."
+            elif any(word in project_lower for word in ['game', 'gaming', 'play']):
+                project_type_context = "This appears to be a gaming project. Focus on game development frameworks, graphics, and interactive tools."
+            elif any(word in project_lower for word in ['blog', 'content', 'cms']):
+                project_type_context = "This appears to be a content management project. Focus on content creation, management, and publishing tools."
+            elif any(word in project_lower for word in ['portfolio', 'personal', 'resume']):
+                project_type_context = "This appears to be a portfolio project. Focus on presentation, design, and showcase tools."
+            elif any(word in project_lower for word in ['task', 'todo', 'management', 'organizer']):
+                project_type_context = "This appears to be a task management project. Focus on CRUD operations, state management, and organization tools."
+            elif any(word in project_lower for word in ['fitness', 'health', 'tracker', 'monitor']):
+                project_type_context = "This appears to be a health/fitness tracking project. Focus on data tracking, visualization, and health-related APIs."
+            elif any(word in project_lower for word in ['recipe', 'food', 'cooking']):
+                project_type_context = "This appears to be a recipe/food project. Focus on recipe management, food APIs, and culinary tools."
+            
+            prompt = f"""
+Based on this specific project:
+{project_context}
+
+{project_type_context}
+
+Suggest 5-8 specific tools, libraries, frameworks, or APIs that would be essential for building this project. 
+Focus on tools that are:
+- Directly relevant to the project requirements
+- Appropriate for the project type and complexity
+- Include both core development tools and specialized libraries
+- Consider the user's skill level and project goals
+
+For each tool, provide:
+- Exact name and version if applicable
+- Brief explanation of why it's needed for this specific project
+- Whether it's free or paid
+- Alternative options if applicable
+
+Format your response as:
+TOOLS:
+- [Tool name with version] (specific reason for this project)
+- [Tool name with version] (specific reason for this project)
+- [Tool name with version] (specific reason for this project)
+[Continue with 5-8 tools total]
+
+DESCRIPTION: [Brief explanation of tool selection strategy and how these tools work together for this project]
+
+Make sure all suggestions are directly relevant to the specific project requirements and will help the user build exactly what they described.
+            """
+
+            response = model.generate_content(prompt)
+            text = response.text.strip()
+            
+            # Parse the response
+            tools = []
+            description = ""
+            
+            lines = text.split('\n')
+            in_tools_section = False
+            
+            for line in lines:
+                line = line.strip()
+                if line.startswith('TOOLS:'):
+                    in_tools_section = True
+                    continue
+                elif line.startswith('DESCRIPTION:'):
+                    in_tools_section = False
+                    description = line.replace('DESCRIPTION:', '').strip()
+                    continue
+                elif in_tools_section and line.startswith('-'):
+                    tool = line.replace('-', '').strip()
+                    if tool:
+                        tools.append(tool)
+            
+            # If no tools were parsed, provide fallback suggestions based on project type
+            if not tools:
+                # Generate fallback based on project keywords
+                fallback_tools = []
+                
+                if any(word in project_lower for word in ['weather', 'api', 'data']):
+                    fallback_tools.extend(['Axios (for API calls)', 'Chart.js (for data visualization)', 'OpenWeatherMap API (for weather data)'])
+                elif any(word in project_lower for word in ['chat', 'messaging', 'communication']):
+                    fallback_tools.extend(['Socket.io (for real-time communication)', 'Express.js (for backend)', 'React (for frontend UI)'])
+                elif any(word in project_lower for word in ['e-commerce', 'shop', 'store', 'payment']):
+                    fallback_tools.extend(['Stripe API (for payments)', 'MongoDB (for product database)', 'React (for shopping interface)'])
+                elif any(word in project_lower for word in ['social', 'network', 'profile', 'user']):
+                    fallback_tools.extend(['Firebase Auth (for user authentication)', 'MongoDB (for user profiles)', 'React (for social interface)'])
+                elif any(word in project_lower for word in ['game', 'gaming', 'play']):
+                    fallback_tools.extend(['Phaser.js (for game development)', 'Canvas API (for graphics)', 'Web Audio API (for sound)'])
+                elif any(word in project_lower for word in ['blog', 'content', 'cms']):
+                    fallback_tools.extend(['Next.js (for content management)', 'Markdown (for content writing)', 'MongoDB (for content storage)'])
+                elif any(word in project_lower for word in ['portfolio', 'personal', 'resume']):
+                    fallback_tools.extend(['React (for interactive UI)', 'Framer Motion (for animations)', 'Tailwind CSS (for styling)'])
+                elif any(word in project_lower for word in ['task', 'todo', 'management', 'organizer']):
+                    fallback_tools.extend(['React (for task interface)', 'LocalStorage (for data persistence)', 'React Hook Form (for task input)'])
+                elif any(word in project_lower for word in ['fitness', 'health', 'tracker', 'monitor']):
+                    fallback_tools.extend(['Chart.js (for progress visualization)', 'LocalStorage (for data storage)', 'React (for tracking interface)'])
+                elif any(word in project_lower for word in ['recipe', 'food', 'cooking']):
+                    fallback_tools.extend(['Spoonacular API (for recipe data)', 'React (for recipe display)', 'LocalStorage (for saved recipes)'])
+                elif any(word in project_lower for word in ['web', 'website', 'app', 'frontend']):
+                    fallback_tools.extend(['React (for frontend UI)', 'HTML/CSS (for styling)', 'JavaScript (for interactivity)'])
+                elif any(word in project_lower for word in ['api', 'backend', 'server']):
+                    fallback_tools.extend(['Node.js (for backend)', 'Express.js (for API)', 'MongoDB (for database)'])
+                elif any(word in project_lower for word in ['data', 'analysis', 'ml', 'ai']):
+                    fallback_tools.extend(['Python (for data processing)', 'Pandas (for data manipulation)', 'Jupyter Notebook (for analysis)'])
+                elif any(word in project_lower for word in ['mobile', 'app']):
+                    fallback_tools.extend(['React Native (for mobile)', 'Expo (for development)', 'Android Studio (for testing)'])
+                
+                tools = fallback_tools if fallback_tools else ['React (for frontend)', 'Node.js (for backend)', 'MongoDB (for database)']
+            
+            return {
+                'type': 'software',
+                'tools': tools,
+                'description': description if description else 'Essential tools and libraries for building your project effectively.'
+            }
+        
+    except Exception as e:
+        logger.error(f"Error suggesting tools: {str(e)}")
+        return {
+            'type': 'software',
+            'tools': ['React (for frontend)', 'Node.js (for backend)', 'MongoDB (for database)'],
+            'description': 'Consider using popular tools like React, Node.js, or Python libraries based on your project needs.'
+        }
+
+def extract_components_from_suggestions(suggestions_text):
+    """Extract structured component data from hardware suggestions"""
+    try:
+        components = []
+        lines = suggestions_text.split('\n')
+        in_component_section = False
+        
+        for line in lines:
+            line = line.strip()
+            # Check for component section with or without emoji
+            if 'COMPONENT LIST:' in line or '📦 COMPONENT LIST:' in line:
+                in_component_section = True
+                continue
+            elif in_component_section and (
+                line.startswith('🛒') or line.startswith('📚') or line.startswith('⚡') or 
+                line.startswith('🔧 TOOLS NEEDED:') or line.startswith('TOOLS NEEDED:') or
+                line.startswith('📖 LEARNING RESOURCES:') or line.startswith('LEARNING RESOURCES:') or
+                line.startswith('💡 IMPLEMENTATION NOTES:') or line.startswith('IMPLEMENTATION NOTES:')
+            ):
+                break
+            elif in_component_section and line.startswith('-') and ' - ' in line:
+                # Parse component line: "Component Name - Quantity - Purpose - Cost"
+                parts = line.replace('-', '').strip().split(' - ')
+                if len(parts) >= 3:
+                    component_name = parts[0].strip()
+                    quantity = parts[1].strip() if len(parts) > 1 else '1'
+                    purpose = parts[2].strip() if len(parts) > 2 else ''
+                    cost = parts[3].strip() if len(parts) > 3 else 'Varies'
+                    
+                    # Clean up the component name (remove any extra formatting)
+                    component_name = component_name.replace('📦', '').replace('🔧', '').replace('⚡', '').strip()
+                    
+                    components.append({
+                        'name': component_name,
+                        'quantity': quantity,
+                        'purpose': purpose,
+                        'cost': cost
+                    })
+        
+        # If no components found, try alternative parsing
+        if not components:
+            logger.warning("No components found with standard parsing, trying alternative method")
+            for line in lines:
+                line = line.strip()
+                if line.startswith('-') and any(word in line.lower() for word in ['sensor', 'arduino', 'relay', 'pump', 'wire', 'breadboard', 'power']):
+                    # Try to extract component info from any line that looks like a component
+                    parts = line.replace('-', '').strip().split(' - ')
+                    if len(parts) >= 2:
+                        component_name = parts[0].strip()
+                        # Try to extract quantity and purpose from the rest
+                        remaining = ' - '.join(parts[1:])
+                        if ' - ' in remaining:
+                            quantity_part, purpose_part = remaining.split(' - ', 1)
+                            quantity = quantity_part.strip()
+                            purpose = purpose_part.strip()
+                        else:
+                            quantity = '1'
+                            purpose = remaining.strip()
+                        
+                        components.append({
+                            'name': component_name,
+                            'quantity': quantity,
+                            'purpose': purpose,
+                            'cost': 'Varies'
+                        })
+        
+        logger.info(f"Extracted {len(components)} components: {[c['name'] for c in components]}")
+        return components
+    except Exception as e:
+        logger.error(f"Error extracting components: {str(e)}")
+        return []
+
+def get_component_shopping_links(components):
+    """Get Google Shopping links for hardware components"""
+    try:
+        shopping_links = {}
+        base_url = "https://api.scrapingdog.com/google_shopping"
+        
+        for component in components:
+            component_name = component['name']
+            logger.info(f"Searching shopping links for: {component_name}")
+            
+            params = {
+                "api_key": SCRAPINGDOG_API_KEY,
+                "q": component_name,
+                "gl": "in",  # India
+                "hl": "en"
+            }
+            
+            try:
+                response = requests.get(base_url, params=params, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    if data and len(data) > 0:
+                        # Get top 3 results
+                        top_results = data[:3]
+                        shopping_links[component_name] = [
+                            {
+                                'title': result.get('title', ''),
+                                'price': result.get('price', ''),
+                                'link': result.get('link', ''),
+                                'image': result.get('image', ''),
+                                'rating': result.get('rating', ''),
+                                'reviews': result.get('reviews', '')
+                            }
+                            for result in top_results
+                        ]
+                        logger.info(f"Found {len(top_results)} shopping results for {component_name}")
+                    else:
+                        shopping_links[component_name] = []
+                        logger.warning(f"No shopping results found for {component_name}")
+                else:
+                    logger.error(f"Shopping API error for {component_name}: {response.status_code}")
+                    shopping_links[component_name] = []
+                    
+            except Exception as e:
+                logger.error(f"Error fetching shopping links for {component_name}: {str(e)}")
+                shopping_links[component_name] = []
+        
+        return shopping_links
+        
+    except Exception as e:
+        logger.error(f"Error in get_component_shopping_links: {str(e)}")
+        return {}
+
+def is_relevant(repo, project_idea):
+    """Filter irrelevant repositories"""
+    idea_keywords = set(word.lower() for word in re.findall(r'\w+', project_idea))
+    combined_text = f"{repo['name']} {repo['desc']} {repo['readme']}".lower()
+    return any(word in combined_text for word in idea_keywords)
+
+def find_github_templates(project_idea, category="software", project_title="", project_overview=""):
+    """Find GitHub starter templates for software projects only"""
+    try:
+        # Only find GitHub templates for software projects
+        if category != "software":
+            logger.info(f"Skipping GitHub templates for {category} project")
+            return None
+            
+        logger.info(f"Finding GitHub templates for: {project_idea} (category: {category})")
+        
+        # Generate search keywords
+        keywords = get_github_search_keywords(project_idea)
+        logger.info(f"Generated keywords: {keywords}")
+        
+        found_repos = []
+        
+        for kw in keywords:
+            logger.info(f"Searching for: {kw}")
+            repos = [r for r in github_search(kw) if is_relevant(r, project_idea)]
+            if repos:
+                for repo in repos:
+                    repo['analysis'] = explain_repo(project_idea, repo)
+                    found_repos.append(repo)
+        
+        # Get tool suggestions based on category
+        tool_suggestions = suggest_tools(project_idea, category, project_title, project_overview)
+        
+        return {
+            'repositories': found_repos[:5],  # Limit to 5 repos
+            'tools': tool_suggestions
+        }
+        
+    except Exception as e:
+        logger.error(f"Error finding GitHub templates: {str(e)}")
+        return None
+
+def extract_software_tools_from_suggestions(tools_text):
+    """Extract structured software tools data from tools suggestions"""
+    try:
+        tools = []
+        lines = tools_text.split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Remove common extra characters
+            line = line.replace('`', '').replace('**', '').replace('*', '')
+            
+            # Parse tool line with description in parentheses
+            if line.startswith('-') and '(' in line and ')' in line:
+                tool_part = line.replace('-', '').strip()
+                tool_name = tool_part.split('(')[0].strip()
+                description = tool_part.split('(')[1].split(')')[0].strip()
+                
+                # Skip if description just repeats the tool name
+                if tool_name.lower() in description.lower() or description.lower() in tool_name.lower():
+                    description = "Essential for this project"
+                
+                tools.append({
+                    'name': tool_name,
+                    'description': description,
+                    'category': 'development_tool',
+                    'version': 'Latest'
+                })
+            elif line.startswith('-'):
+                tool_name = line.replace('-', '').strip()
+                tools.append({
+                    'name': tool_name,
+                    'description': 'Essential for this project',
+                    'category': 'development_tool',
+                    'version': 'Latest'
+                })
+        
+        logger.info(f"Extracted {len(tools)} software tools: {[t['name'] for t in tools]}")
+        return tools
+        
+    except Exception as e:
+        logger.error(f"Error extracting software tools: {str(e)}")
+        return []
+
+def generate_specific_tools_with_ai(project_idea, project_title="", project_overview="", category="software"):
+    """Generate specific tools and materials using Gemini AI based on project idea"""
+    try:
+        if not model:
+            logger.warning("No AI model available for specific tools generation")
+            return []
+        
+        # Create a focused prompt for tools generation
+        prompt = f"""
+You are an expert software development consultant. Based on the following project details, suggest SPECIFIC tools, libraries, frameworks, and technologies that are essential for building this project.
+
+PROJECT IDEA: {project_idea}
+PROJECT TITLE: {project_title}
+PROJECT OVERVIEW: {project_overview}
+CATEGORY: {category}
+
+IMPORTANT REQUIREMENTS:
+1. Provide ONLY SPECIFIC tools with exact names and versions
+2. Include the specific purpose for each tool in this project
+3. Do NOT use generic terms like "computer", "internet", "text editor"
+4. Focus on actual development tools, libraries, and technologies
+5. Include both frontend and backend tools if applicable
+6. Specify versions when relevant (e.g., "React 18.2.0", "Node.js 18.x")
+
+Format your response as a simple list with each tool on a new line:
+- [Tool Name] (specific purpose for this project)
+- [Tool Name] (specific purpose for this project)
+- [Tool Name] (specific purpose for this project)
+
+Examples of good responses:
+- React 18.2.0 (for building the user interface)
+- Node.js 18.x (for backend API development)
+- MongoDB 6.0 (for storing user data)
+- Express.js 4.18 (for creating REST API endpoints)
+- Axios (for making HTTP requests to external APIs)
+- Tailwind CSS (for styling the user interface)
+
+Generate 5-8 specific tools that are directly relevant to building this project.
+        """
+        
+        logger.info(f"Generating specific tools for project: {project_idea}")
+        response = model.generate_content(prompt)
+        tools_text = response.text.strip()
+        
+        # Parse the tools into structured data
+        tools = extract_software_tools_from_suggestions(tools_text)
+        
+        logger.info(f"Generated {len(tools)} specific tools: {tools}")
+        return tools
+        
+    except Exception as e:
+        logger.error(f"Error generating specific tools with AI: {str(e)}")
+        return []
 
 def generate_project_task(topic, transcript_content, available_time, user_skill_level="beginner", 
-                         user_description="", youtube_videos=None, knowledge_assessment=""):
+                         user_description="", youtube_videos=None, knowledge_assessment="", category="software"):
     """Generate a complete project task with roadmap"""
     try:
         if not model:
@@ -293,28 +938,31 @@ def generate_project_task(topic, transcript_content, available_time, user_skill_
         # Distribute videos across phases
         phase_videos = distribute_videos_to_phases(youtube_videos, topic, user_skill_level) if youtube_videos else {}
         
-        # Create a comprehensive prompt for project generation
+        # Create a comprehensive prompt for project generation with emphasis on specific tools
         prompt = f"""
 You are an AI-powered DIY project mentor. Your task is to generate a personalized and engaging project idea and their roadmap for a learner based on their background, available time, and content they've recently learned. The goal is to help them build confidence through hands-on application by suggesting a creative, domain-specific project.
-
+        
 INPUT TOPIC: {topic}
+PROJECT CATEGORY: {category}
 
 USER PROFILE:
-- Skill Level: {user_skill_level}
-- Available Time: {available_time}
+        - Skill Level: {user_skill_level}
+        - Available Time: {available_time}
 - Learner Description: {user_description}
-- Knowledge Assessment: {knowledge_assessment}
-
+        - Knowledge Assessment: {knowledge_assessment}
+        
 CONTENT CONTEXT:
 {transcript_content[:1000] if transcript_content else "No reference content provided"}
 
 YOUR TASK:
 Generate a personalized DIY project roadmap that fits the learner's profile. The roadmap should:
-- Suggest a project in a relevant domain (e.g. coding, hardware, design, research)
+- Suggest a project in the {category} domain
 - Match the learner's skill level and available time
 - Scaffold learning with intelligent guidance and hints
 - Build on the learner's recent knowledge or lecture content
 - Encourage curiosity and practical creativity
+
+CRITICAL: For TOOLS & MATERIALS, you MUST provide SPECIFIC, PROJECT-RELEVANT tools. Do NOT use generic tools like "Computer with internet access" or "Text editor". Instead, provide exact tool names, versions, and specific reasons why each tool is needed for THIS specific project.
 
 FORMAT:
 
@@ -335,21 +983,21 @@ PROJECT OVERVIEW:
 - Why it's valuable and how it applies real-world knowledge
 - What tools, methods, or technologies will be used
 - What the learner will build/create by the end]
-
-PREREQUISITES:
+        
+        PREREQUISITES:
 - [List 3-5 prerequisites or foundational skills/tools]
 
 TOOLS & MATERIALS:
-- [List 5-8 specific tools, libraries, software, or hardware items needed]
-- [Include exact names of software, libraries, or tools]
-- [Specify versions if relevant]
-- [Include both free and paid options if applicable]
-- [Mention any physical materials for hardware projects]
-
-LEARNING OBJECTIVES:
+- [List 5-8 SPECIFIC tools, libraries, software, or hardware items needed for THIS project]
+- [Include exact names, versions, and specific purposes for THIS project]
+- [Examples: "React 18.2.0 (for building the user interface)", "Node.js 18.x (for backend API)", "MongoDB 6.0 (for storing user data)"]
+- [Do NOT use generic tools like "Computer with internet access" or "Text editor"]
+- [Be very specific about why each tool is needed for THIS project]
+        
+        LEARNING OBJECTIVES:
 - [List 4-6 core skills or concepts the learner will gain]
-
-PROJECT ROADMAP:
+        
+        PROJECT ROADMAP:
 
 PHASE 1: Setup & Planning ({int(available_time.split()[0])//4 if available_time.split()[0].isdigit() else '30'} minutes)
 - [3-4 setup tasks: research, install tools, define project scope, etc.]
@@ -370,18 +1018,24 @@ TEMPLATES / HINTS (if applicable):
 
 COMMON PITFALLS & HOW TO AVOID THEM:
 - [List 4-5 common issues and troubleshooting tips]
-
-SUCCESS CRITERIA:
+        
+        SUCCESS CRITERIA:
 - [4-5 points on how to know if the project was successful]
 
 EXTENSIONS & NEXT STEPS:
 - [Suggest 3-5 ideas for taking the project further]
 
 TONE: Keep the language encouraging, beginner-friendly (if applicable), and motivating. Aim to make the learner feel excited and capable of starting right away.
-"""
 
+REMEMBER: The TOOLS & MATERIALS section is CRITICAL. Provide SPECIFIC tools with exact names and versions that are directly relevant to building THIS specific project.
+        """
+        
+        logger.info(f"Generating project with AI model for topic: {topic}")
         response = model.generate_content(prompt)
         project_text = response.text.strip()
+        
+        logger.info(f"AI response received, length: {len(project_text)}")
+        logger.info(f"First 500 characters: {project_text[:500]}")
         
         # Parse the project text into structured data
         project_data = parse_project_text(project_text)
@@ -410,6 +1064,110 @@ TONE: Keep the language encouraging, beginner-friendly (if applicable), and moti
         logger.info(f"Generated tools_and_materials: {project_data.get('tools_and_materials', 'EMPTY')}")
         logger.info(f"Raw project text length: {len(project_text)}")
         logger.info(f"Parsed sections: {list(project_data.keys())}")
+        
+        # Generate specific tools using dedicated AI function
+        specific_tools = generate_specific_tools_with_ai(
+            topic, 
+            project_data.get('project_title', ''),
+            project_data.get('project_overview', ''),
+            category
+        )
+        
+        # Add structured tools data for software projects
+        if category == "software" and specific_tools:
+            project_data['software_tools'] = {
+                'type': 'software',
+                'tools': specific_tools,
+                'description': 'Essential development tools and technologies for this project'
+            }
+            # Also keep the text format for backward compatibility
+            project_data['tools_and_materials'] = '\n'.join([f"- {tool['name']} ({tool['description']})" for tool in specific_tools])
+            logger.info(f"Added structured software tools: {len(specific_tools)} tools")
+        elif category == "software":
+            # If no specific tools generated, create structured data from parsed tools
+            tools_text = project_data.get('tools_and_materials', '')
+            if tools_text:
+                parsed_tools = extract_software_tools_from_suggestions(tools_text)
+                if parsed_tools:
+                    project_data['software_tools'] = {
+                        'type': 'software',
+                        'tools': parsed_tools,
+                        'description': 'Essential development tools and technologies for this project'
+                    }
+                    logger.info(f"Created structured software tools from parsed text: {len(parsed_tools)} tools")
+        elif category == "other" and specific_tools:
+            project_data['software_tools'] = {
+                'type': 'other',
+                'tools': specific_tools,
+                'description': 'Essential tools and materials for this project'
+            }
+            # Also keep the text format for backward compatibility
+            project_data['tools_and_materials'] = '\n'.join([f"- {tool['name']} ({tool['description']})" for tool in specific_tools])
+            logger.info(f"Added structured other category tools: {len(specific_tools)} tools")
+        elif category == "other":
+            # If no specific tools generated, create structured data from parsed tools
+            tools_text = project_data.get('tools_and_materials', '')
+            if tools_text:
+                parsed_tools = extract_software_tools_from_suggestions(tools_text)
+                if parsed_tools:
+                    project_data['software_tools'] = {
+                        'type': 'other',
+                        'tools': parsed_tools,
+                        'description': 'Essential tools and materials for this project'
+                    }
+                    logger.info(f"Created structured other category tools from parsed text: {len(parsed_tools)} tools")
+        
+        if specific_tools:
+            # Replace or enhance the tools with AI-generated specific ones
+            project_data['tools_and_materials'] = '\n'.join([f"- {tool['name']} ({tool['description']})" for tool in specific_tools])
+            logger.info(f"Replaced tools with AI-generated specific ones: {project_data['tools_and_materials']}")
+        
+        # Check if tools and materials are generic and regenerate if needed
+        tools_text = project_data.get('tools_and_materials', '')
+        if tools_text and any(generic in tools_text.lower() for generic in ['computer with internet', 'text editor', 'programming language', 'documentation']):
+            logger.warning("Detected generic tools, regenerating with more specific prompt")
+            
+            # Generate specific tools using suggest_tools function
+            specific_tools = suggest_tools(
+                topic, 
+                category, 
+                project_data.get('project_title', ''),
+                project_data.get('project_overview', '')
+            )
+            
+            if specific_tools and specific_tools.get('type') == 'software' and specific_tools.get('tools'):
+                # Replace generic tools with specific ones
+                specific_tool_list = specific_tools.get('tools', [])
+                project_data['tools_and_materials'] = '\n'.join([f"- {tool}" for tool in specific_tool_list])
+                logger.info(f"Replaced generic tools with specific ones: {project_data['tools_and_materials']}")
+        
+        # Enhance tools and materials using the suggest_tools function
+        if project_data.get('tools_and_materials', '').strip():
+            # If AI generated tools, enhance them with more specific suggestions
+            enhanced_tools = suggest_tools(
+                topic, 
+                category, 
+                project_data.get('project_title', ''),
+                project_data.get('project_overview', '')
+            )
+            
+            if enhanced_tools and enhanced_tools.get('type') == 'software' and enhanced_tools.get('tools'):
+                # Combine AI-generated tools with enhanced suggestions
+                ai_tools = project_data.get('tools_and_materials', '').split('\n')
+                enhanced_tool_list = enhanced_tools.get('tools', [])
+                
+                # Create a combined list, avoiding duplicates
+                combined_tools = []
+                for tool in ai_tools:
+                    if tool.strip() and tool.strip() not in combined_tools:
+                        combined_tools.append(tool.strip())
+                
+                for tool in enhanced_tool_list:
+                    if tool.strip() and tool.strip() not in combined_tools:
+                        combined_tools.append(tool.strip())
+                
+                project_data['tools_and_materials'] = '\n'.join([f"- {tool}" for tool in combined_tools])
+                logger.info(f"Enhanced tools and materials: {project_data['tools_and_materials']}")
         
         # Ensure we have tools and materials, if not, use fallback
         if not project_data.get('tools_and_materials', '').strip():
@@ -489,53 +1247,169 @@ def create_fallback_project(topic, available_time, user_skill_level, user_descri
     
     # Determine project type and set appropriate tools
     topic_lower = topic.lower()
-    if 'app' in topic_lower or 'website' in topic_lower or 'web' in topic_lower:
+    
+    # More specific tool suggestions based on project type
+    if 'weather' in topic_lower or 'api' in topic_lower or 'data' in topic_lower:
         tools_materials = [
-            "Computer with internet access",
-            "Text editor (VS Code, Sublime Text, or Atom)",
-            "Web browser (Chrome, Firefox, or Safari)",
-            "Git for version control",
-            "Node.js and npm (for JavaScript projects)",
-            "Python 3.x (for Python projects)",
-            "Documentation resources (MDN, W3Schools)"
+            "Axios (for API calls and data fetching)",
+            "Chart.js (for data visualization)",
+            "OpenWeatherMap API (for weather data)",
+            "React (for building the user interface)",
+            "CSS Grid/Flexbox (for responsive layout)",
+            "LocalStorage (for caching data)",
+            "Git (for version control)"
         ]
+        domain = "Data & API Integration"
+    elif 'chat' in topic_lower or 'messaging' in topic_lower or 'communication' in topic_lower:
+        tools_materials = [
+            "Socket.io (for real-time communication)",
+            "Express.js (for backend server)",
+            "React (for frontend chat interface)",
+            "MongoDB (for storing chat messages)",
+            "JWT (for user authentication)",
+            "CSS (for chat styling)",
+            "Git (for version control)"
+        ]
+        domain = "Real-time Communication"
+    elif 'e-commerce' in topic_lower or 'shop' in topic_lower or 'store' in topic_lower or 'payment' in topic_lower:
+        tools_materials = [
+            "Stripe API (for payment processing)",
+            "MongoDB (for product and user database)",
+            "React (for shopping interface)",
+            "Express.js (for backend API)",
+            "JWT (for user authentication)",
+            "CSS (for product styling)",
+            "Git (for version control)"
+        ]
+        domain = "E-commerce"
+    elif 'social' in topic_lower or 'network' in topic_lower or 'profile' in topic_lower or 'user' in topic_lower:
+        tools_materials = [
+            "Firebase Auth (for user authentication)",
+            "MongoDB (for user profiles and posts)",
+            "React (for social interface)",
+            "Express.js (for backend API)",
+            "Multer (for file uploads)",
+            "CSS (for social media styling)",
+            "Git (for version control)"
+        ]
+        domain = "Social Networking"
+    elif 'game' in topic_lower or 'gaming' in topic_lower or 'play' in topic_lower:
+        tools_materials = [
+            "Phaser.js (for game development)",
+            "Canvas API (for graphics rendering)",
+            "Web Audio API (for sound effects)",
+            "React (for game UI)",
+            "LocalStorage (for saving game progress)",
+            "CSS (for game styling)",
+            "Git (for version control)"
+        ]
+        domain = "Game Development"
+    elif 'blog' in topic_lower or 'content' in topic_lower or 'cms' in topic_lower:
+        tools_materials = [
+            "Next.js (for content management)",
+            "Markdown (for content writing)",
+            "MongoDB (for content storage)",
+            "React (for blog interface)",
+            "Tailwind CSS (for styling)",
+            "Git (for version control)",
+            "Vercel (for deployment)"
+        ]
+        domain = "Content Management"
+    elif 'portfolio' in topic_lower or 'personal' in topic_lower or 'resume' in topic_lower:
+        tools_materials = [
+            "React (for interactive portfolio)",
+            "Framer Motion (for animations)",
+            "Tailwind CSS (for styling)",
+            "React Router (for navigation)",
+            "EmailJS (for contact form)",
+            "Git (for version control)",
+            "Vercel/Netlify (for deployment)"
+        ]
+        domain = "Portfolio & Personal Branding"
+    elif 'task' in topic_lower or 'todo' in topic_lower or 'management' in topic_lower or 'organizer' in topic_lower:
+        tools_materials = [
+            "React (for task interface)",
+            "LocalStorage (for data persistence)",
+            "React Hook Form (for task input)",
+            "CSS (for task styling)",
+            "Date-fns (for date handling)",
+            "Git (for version control)",
+            "Vercel (for deployment)"
+        ]
+        domain = "Task Management"
+    elif 'fitness' in topic_lower or 'health' in topic_lower or 'tracker' in topic_lower or 'monitor' in topic_lower:
+        tools_materials = [
+            "Chart.js (for progress visualization)",
+            "LocalStorage (for data storage)",
+            "React (for tracking interface)",
+            "CSS (for fitness app styling)",
+            "Date-fns (for date calculations)",
+            "Git (for version control)",
+            "PWA capabilities (for mobile access)"
+        ]
+        domain = "Health & Fitness"
+    elif 'recipe' in topic_lower or 'food' in topic_lower or 'cooking' in topic_lower:
+        tools_materials = [
+            "Spoonacular API (for recipe data)",
+            "React (for recipe display)",
+            "LocalStorage (for saved recipes)",
+            "CSS (for recipe styling)",
+            "React Router (for recipe navigation)",
+            "Git (for version control)",
+            "Vercel (for deployment)"
+        ]
+        domain = "Food & Recipe Management"
+    elif 'app' in topic_lower or 'website' in topic_lower or 'web' in topic_lower:
+        tools_materials = [
+            "React (for frontend development)",
+            "Node.js (for backend server)",
+            "MongoDB (for database)",
+            "Express.js (for API routes)",
+            "CSS/SCSS (for styling)",
+            "Git (for version control)",
+            "Vercel/Netlify (for deployment)"
+        ]
+        domain = "Web Development"
     elif 'ml' in topic_lower or 'machine learning' in topic_lower or 'ai' in topic_lower:
         tools_materials = [
-            "Computer with Python 3.7+ installed",
-            "Jupyter Notebook or Google Colab",
-            "Python libraries: pandas, numpy, scikit-learn",
-            "Matplotlib or Plotly for visualization",
-            "Sample datasets (Kaggle, UCI ML Repository)",
-            "Text editor or IDE (PyCharm, VS Code)",
-            "Git for version control"
+            "Python 3.7+ (for ML development)",
+            "Jupyter Notebook (for analysis)",
+            "Pandas (for data manipulation)",
+            "NumPy (for numerical computing)",
+            "Scikit-learn (for ML algorithms)",
+            "Matplotlib (for visualization)",
+            "Git (for version control)"
         ]
-    elif 'game' in topic_lower or 'mobile' in topic_lower:
+        domain = "Machine Learning"
+    elif 'mobile' in topic_lower or 'app' in topic_lower:
         tools_materials = [
-            "Computer with development environment",
-            "Game engine (Unity, Godot, or Construct)",
-            "Graphics software (GIMP, Photoshop, or Canva)",
-            "Audio editing software (Audacity)",
-            "Mobile device for testing (optional)",
-            "Version control system (Git)",
-            "Documentation and tutorials"
+            "React Native (for mobile development)",
+            "Expo (for development environment)",
+            "Android Studio (for testing)",
+            "Xcode (for iOS testing)",
+            "Git (for version control)",
+            "Firebase (for backend services)",
+            "App Store Connect (for deployment)"
         ]
+        domain = "Mobile Development"
     else:
         tools_materials = [
-            "Computer with internet access",
-            "Text editor or IDE appropriate for the project",
-            "Relevant programming language and tools",
-            "Documentation and learning resources",
-            "Version control system (Git)",
-            "Testing environment",
-            "Project management tools (optional)"
+            "React (for frontend development)",
+            "Node.js (for backend server)",
+            "MongoDB (for database)",
+            "Express.js (for API routes)",
+            "CSS (for styling)",
+            "Git (for version control)",
+            "Vercel/Netlify (for deployment)"
         ]
+        domain = "General Development"
     
     return {
         'project_title': f"DIY Project: {topic}",
         'estimated_time': available_time,
         'difficulty_level': user_skill_level,
         'knowledge_assessment': "Basic assessment available",
-        'domain': 'Coding' if 'app' in topic.lower() or 'website' in topic.lower() else 'General',
+        'domain': domain,
         'project_overview': f"This {topic} project is designed to help you learn the fundamentals while building something practical and useful. You'll gain hands-on experience with real-world applications and develop skills that are valuable in today's technology landscape. This project is perfect for {user_skill_level}s who want to understand {topic} concepts through practical application. By the end, you'll have a working project that demonstrates your understanding and can serve as a portfolio piece or foundation for more advanced work.",
         'prerequisites': f"- Basic understanding of {topic}\n- Computer with internet access\n- Text editor or IDE",
         'tools_and_materials': '\n'.join([f"- {tool}" for tool in tools_materials]),
@@ -568,6 +1442,55 @@ PHASE 4: Testing & Review (Remaining time)
         'is_ml_project': is_ml
     }
 
+def clean_tools_and_materials(tools_text):
+    """Clean up the Tools & Materials section by removing extra characters and formatting"""
+    if not tools_text:
+        return tools_text
+    
+    try:
+        # Split into lines and clean each line
+        lines = tools_text.split('\n')
+        cleaned_lines = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Remove common extra characters
+            line = line.replace('`', '')  # Remove backticks
+            line = line.replace('**', '')  # Remove bold markers
+            line = line.replace('*', '')   # Remove asterisks
+            
+            # Remove redundant parentheses content that repeats the tool name
+            if '(' in line and ')' in line:
+                # Extract tool name and description
+                tool_part = line.split('(')[0].strip()
+                desc_part = line.split('(')[1].split(')')[0].strip()
+                
+                # Check if description is just repeating the tool name
+                if tool_part.lower() in desc_part.lower() or desc_part.lower() in tool_part.lower():
+                    # Keep only the tool name
+                    line = tool_part
+                else:
+                    # Keep the description but clean it
+                    line = f"{tool_part} ({desc_part})"
+            
+            # Remove lines that are just generic descriptions
+            generic_terms = ['needed for', 'required for', 'essential for', 'used for']
+            if any(term in line.lower() for term in generic_terms) and len(line.split()) < 4:
+                continue
+                
+            # Remove duplicate lines
+            if line not in cleaned_lines:
+                cleaned_lines.append(line)
+        
+        return '\n'.join(cleaned_lines)
+        
+    except Exception as e:
+        logger.error(f"Error cleaning tools and materials: {str(e)}")
+        return tools_text
+
 def parse_project_text(project_text):
     """Parse the generated project text into structured data"""
     try:
@@ -596,7 +1519,11 @@ def parse_project_text(project_text):
                 if line.startswith(marker):
                     # Save previous section
                     if current_section:
-                        sections[current_section] = '\n'.join(current_content)
+                        section_content = '\n'.join(current_content)
+                        # Clean up tools and materials section specifically
+                        if current_section == 'tools_materials':
+                            section_content = clean_tools_and_materials(section_content)
+                        sections[current_section] = section_content
                         logger.info(f"Saved section '{current_section}' with {len(current_content)} lines")
                     
                     # Start new section
@@ -617,7 +1544,11 @@ def parse_project_text(project_text):
         
         # Save the last section
         if current_section:
-            sections[current_section] = '\n'.join(current_content)
+            section_content = '\n'.join(current_content)
+            # Clean up tools and materials section specifically
+            if current_section == 'tools_materials':
+                section_content = clean_tools_and_materials(section_content)
+            sections[current_section] = section_content
             logger.info(f"Saved final section '{current_section}' with {len(current_content)} lines")
         
         logger.info(f"Final parsed sections: {list(sections.keys())}")
@@ -805,6 +1736,147 @@ def noop_mermaid(*args, **kwargs):
 def remove_mermaid_endpoints_and_functions():
     pass  # This is a placeholder for code removal
 
+@app.route('/api/generate-mermaid-roadmap', methods=['POST'])
+def api_generate_mermaid_roadmap():
+    """Generate Mermaid.js flowchart for project roadmap"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'project_data' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Project data is required'
+            }), 400
+        
+        project_data = data['project_data']
+        
+        # Generate Mermaid flowchart
+        mermaid_code = generate_mermaid_flowchart(project_data)
+        
+        if not mermaid_code:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to generate Mermaid flowchart'
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'mermaid_code': mermaid_code
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in generate-mermaid-roadmap endpoint: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+def generate_mermaid_flowchart(project_data):
+    """Generate Mermaid.js flowchart from project data"""
+    try:
+        if not model:
+            return create_basic_mermaid_flowchart(project_data)
+        
+        prompt = f"""
+Create a Mermaid.js flowchart for this DIY project roadmap:
+
+Project Title: {project_data.get('project_title', 'DIY Project')}
+Project Overview: {project_data.get('project_overview', '')}
+Tools & Materials: {project_data.get('tools_and_materials', '')}
+Project Roadmap: {project_data.get('project_roadmap', '')}
+
+Generate a clear, professional flowchart that shows:
+1. Project phases/steps as boxes
+2. Tools and materials connected to relevant phases
+3. Decision points and milestones
+4. Clear flow direction
+
+Use this format:
+```mermaid
+flowchart TD
+    A[Start] --> B[Phase 1: Setup]
+    B --> C[Phase 2: Development]
+    C --> D[Phase 3: Testing]
+    D --> E[Complete]
+    
+    F[Tool 1] --> B
+    G[Tool 2] --> C
+    H[Tool 3] --> D
+```
+
+Make it:
+- Easy to follow
+- Include relevant tools and materials
+- Show clear progression
+- Use appropriate styling
+- Keep it concise but informative
+
+Return only the Mermaid code, no additional text.
+        """
+        
+        response = model.generate_content(prompt)
+        mermaid_code = response.text.strip()
+        
+        # Clean up the response
+        if mermaid_code.startswith('```mermaid'):
+            mermaid_code = mermaid_code.replace('```mermaid', '').replace('```', '').strip()
+        
+        return mermaid_code
+        
+    except Exception as e:
+        logger.error(f"Error generating Mermaid flowchart: {str(e)}")
+        return create_basic_mermaid_flowchart(project_data)
+
+def create_basic_mermaid_flowchart(project_data):
+    """Create a basic Mermaid flowchart as fallback"""
+    try:
+        # Extract phases from project roadmap
+        phases = []
+        roadmap_text = project_data.get('project_roadmap', '')
+        if roadmap_text:
+            # Try to split by PHASE
+            if 'PHASE' in roadmap_text:
+                phase_sections = roadmap_text.split('PHASE')
+                for i, section in enumerate(phase_sections[1:], 1):
+                    lines = section.split('\n')
+                    title = lines[0].replace(f'{i}:', '').strip() if lines else f'Phase {i}'
+                    phases.append(title)
+        
+        if not phases:
+            phases = ['Setup', 'Development', 'Testing', 'Deploy']
+        
+        # Extract tools
+        tools = []
+        tools_text = project_data.get('tools_and_materials', '')
+        if tools_text:
+            tools = [line.replace('-', '').strip() for line in tools_text.split('\n') if line.strip().startswith('-')][:5]
+        
+        # Create basic flowchart
+        flowchart = "flowchart TD\n"
+        flowchart += "    A[Start] --> B[Setup & Planning]\n"
+        
+        for i, phase in enumerate(phases[:4], 1):
+            if i == 1:
+                flowchart += f"    B --> C[Phase {i}: {phase}]\n"
+            elif i < len(phases[:4]):
+                flowchart += f"    C --> D[Phase {i}: {phase}]\n"
+                flowchart += f"    D --> E[Complete]\n"
+        
+        # Add tools
+        for i, tool in enumerate(tools[:3]):
+            flowchart += f"    F{i}[{tool}] --> B\n"
+        
+        return flowchart
+        
+    except Exception as e:
+        logger.error(f"Error creating basic Mermaid flowchart: {str(e)}")
+        return """flowchart TD
+    A[Start] --> B[Setup & Planning]
+    B --> C[Development]
+    C --> D[Testing]
+    D --> E[Complete]
+    F[Tools] --> B"""
+
 # API Routes - Pure API backend for frontend integration
 @app.route('/api/extract-video-id', methods=['POST'])
 def api_extract_video_id():
@@ -846,6 +1918,7 @@ def api_generate_roadmap():
         topic = data.get('topic')
         available_time = data.get('available_time')
         skill_level = data.get('skill_level', 'beginner')
+        category = data.get('category', 'software')
         user_description = data.get('user_description', '')
         youtube_url = data.get('youtube_url', '')
         transcript_content = ""
@@ -853,7 +1926,7 @@ def api_generate_roadmap():
         if not topic or not available_time:
             return jsonify({"success": False, "error": "Topic and available_time are required"}), 400
 
-        logger.info(f"Generating roadmap for topic: {topic}")
+        logger.info(f"Generating roadmap for topic: {topic}, category: {category}")
         logger.info(f"User description: {user_description[:50]}...")
         
         # Assess knowledge level based on description
@@ -882,7 +1955,8 @@ def api_generate_roadmap():
             user_skill_level=assessed_skill_level,
             user_description=user_description,
             youtube_videos=all_videos,
-            knowledge_assessment=knowledge_assessment
+            knowledge_assessment=knowledge_assessment,
+            category=category
         )
         
         if not project_data:
@@ -890,7 +1964,34 @@ def api_generate_roadmap():
         
         logger.info("Roadmap generated successfully")
         
-        return jsonify({
+        # Find GitHub templates for software projects only
+        github_templates = None
+        hardware_suggestions = None
+        software_tools = None
+        
+        if category == "software":
+            logger.info("Finding GitHub templates for software project")
+            github_templates = find_github_templates(topic, category, project_data.get('project_title', ''), project_data.get('project_overview', ''))
+            # Extract software tools from project data
+            if project_data.get('software_tools'):
+                software_tools = project_data['software_tools']
+                logger.info(f"Found structured software tools: {len(software_tools.get('tools', []))} tools")
+        elif category == "other":
+            logger.info("Processing other category project")
+            # Extract tools from project data for other category
+            if project_data.get('software_tools'):
+                software_tools = project_data['software_tools']
+                logger.info(f"Found structured other category tools: {len(software_tools.get('tools', []))} tools")
+        elif category == "hardware":
+            logger.info("Generating hardware suggestions for hardware project")
+            hardware_suggestions = suggest_tools(
+                topic, 
+                category, 
+                project_data.get('project_title', ''),
+                project_data.get('project_overview', '')
+            )
+        
+        response_data = {
             'success': True,
             'project_data': project_data,
             'keywords': keywords,
@@ -898,7 +1999,16 @@ def api_generate_roadmap():
             'videos': all_videos,
             'assessed_skill_level': assessed_skill_level,
             'knowledge_assessment': knowledge_assessment
-        })
+        }
+        
+        if github_templates:
+            response_data['github_templates'] = github_templates
+        if hardware_suggestions:
+            response_data['hardware_suggestions'] = hardware_suggestions
+        if software_tools:
+            response_data['software_tools'] = software_tools
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error in generate_roadmap API: {str(e)}")

@@ -9,6 +9,8 @@ This backend provides AI-powered project roadmap generation for the DIY Generato
 - **Skill Assessment**: Analyzes user descriptions to assess actual skill level
 - **Video Recommendations**: Searches and recommends relevant YouTube videos
 - **ML Project Support**: Special handling for machine learning projects with dataset recommendations
+- **Hardware Project Support**: Amazon integration for hardware component purchase links
+- **Amazon Scraping**: Automatically finds and provides purchase links for hardware components
 
 ## Setup
 
@@ -16,7 +18,7 @@ This backend provides AI-powered project roadmap generation for the DIY Generato
 
 - Python 3.8+
 - Google Gemini API key
-- ScrapingDog API key (for YouTube search)
+- ScrapingDog API key (for YouTube search and Amazon scraping)
 
 ### Installation
 
@@ -56,7 +58,8 @@ Generate a complete project roadmap based on user input.
   "topic": "Build a Weather App",
   "available_time": "20 hours",
   "skill_level": "intermediate",
-  "user_description": "I have some experience with React and APIs",
+  "category": "hardware",
+  "user_description": "I have some experience with Arduino",
   "youtube_url": "https://youtube.com/watch?v=..."
 }
 ```
@@ -66,22 +69,43 @@ Generate a complete project roadmap based on user input.
 {
   "success": true,
   "project_data": {
-    "project_title": "Weather App Project",
+    "project_title": "Arduino Weather Station",
     "estimated_time": "20 hours",
     "difficulty_level": "intermediate",
-    "prerequisites": ["Basic JavaScript", "React fundamentals"],
-    "tools_and_materials": ["VS Code", "Node.js", "Weather API"],
-    "learning_objectives": ["Build responsive UI", "Integrate external APIs"],
+    "prerequisites": ["Basic Arduino", "Electronics fundamentals"],
+    "tools_and_materials": ["Arduino Uno", "Breadboard", "Sensors"],
+    "learning_objectives": ["Build sensor circuits", "Read sensor data"],
     "project_roadmap": "PHASE 1: Setup (30 minutes)...",
     "common_pitfalls_and_troubleshooting": "Common issues...",
-    "success_criteria": "Working weather app...",
-    "next_steps_and_extensions": "Add more features...",
+    "success_criteria": "Working weather station...",
+    "next_steps_and_extensions": "Add more sensors...",
     "is_ml_project": false
   },
-  "keywords": ["weather", "api", "react", "javascript"],
+  "keywords": ["arduino", "sensors", "weather", "electronics"],
   "videos": [...],
   "assessed_skill_level": "intermediate",
-  "knowledge_assessment": "Based on your description..."
+  "knowledge_assessment": "Based on your description...",
+  "hardware_resources": {
+    "hardware_components": {
+      "circuit_diagrams": ["Basic breadboard setup"],
+      "components": [
+        {
+          "name": "Arduino Uno (main microcontroller)",
+          "amazon_data": {
+            "title": "Arduino Uno R3",
+            "price": "$23.99",
+            "rating": "4.5",
+            "reviews": "2,500+ reviews",
+            "url": "https://amazon.com/...",
+            "image": "https://...",
+            "availability": "In Stock"
+          }
+        }
+      ],
+      "libraries": ["Arduino IDE", "Sensor libraries"],
+      "description": "Essential components for Arduino projects"
+    }
+  }
 }
 ```
 
@@ -93,6 +117,26 @@ Get transcript from YouTube video.
 
 ### GET /health
 Health check endpoint.
+
+## Hardware Project Features
+
+### Amazon Integration
+For hardware projects, the system automatically:
+- Suggests relevant hardware components
+- Searches Amazon for each component
+- Provides purchase links with pricing and availability
+- Shows product ratings and reviews
+- Displays product images
+
+### Component Information
+Each hardware component includes:
+- Component name and description
+- Amazon product title
+- Current price
+- Customer rating (1-5 stars)
+- Number of reviews
+- Stock availability
+- Direct purchase link
 
 ## Frontend Integration
 
@@ -123,8 +167,16 @@ npm run dev
 
 1. Start both backend and frontend
 2. Navigate to `/diy-generator` in your frontend
-3. Fill out the form and submit
-4. Check the generated roadmap
+3. Select "Hardware" as the project category
+4. Fill out the form and submit
+5. Check the generated roadmap with Amazon purchase links
+
+### Testing Amazon Scraping
+
+Run the test script to verify Amazon scraping functionality:
+```bash
+python test_amazon_scraping.py
+```
 
 ## Troubleshooting
 
@@ -133,6 +185,7 @@ npm run dev
 1. **CORS Errors**: Ensure the backend is running and accessible
 2. **API Key Errors**: Verify your Gemini and ScrapingDog API keys are set
 3. **Port Conflicts**: Change the port in `app.py` if 5000 is occupied
+4. **Amazon Scraping Issues**: Check ScrapingDog API key and rate limits
 
 ### Debug Mode
 

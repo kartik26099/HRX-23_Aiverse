@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { Wrench, Clock, Calendar, CheckCircle, Target, Lightbulb, Package, ExternalLink, Play, AlertCircle, Brain, Database, Sparkles, Zap, ArrowRight, FileText, Users, BarChart3, Eye, Loader2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Wrench, Clock, Calendar, CheckCircle, Target, Lightbulb, Package, ExternalLink, Play, AlertCircle, Brain, Database, Sparkles, Zap, ArrowRight, FileText, Users, BarChart3, Eye, Loader2, Check, Code, Cpu } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
-import MermaidRoadmap from '@/components/MermaidRoadmap'
 
 interface ProjectRoadmap {
   title: string
@@ -43,6 +43,57 @@ interface ProjectRoadmap {
   projectOverview?: string
   domain?: string
   templatesHints?: string
+  githubTemplates?: {
+    repositories: Array<{
+      name: string
+      url: string
+      desc: string
+      readme?: string
+      analysis?: {
+        useful_for: string
+        match_score: string
+        pros: string[]
+        cons: string[]
+        customization: string
+      }
+    }>
+    tools: {
+      type: 'software'
+      tools?: string[]
+      description?: string
+    }
+  }
+  hardwareSuggestions?: {
+    type: 'hardware'
+    suggestions?: string
+    components?: Array<{
+      name: string
+      quantity: string
+      purpose: string
+      cost: string
+    }>
+    shopping_links?: {
+      [componentName: string]: Array<{
+        title: string
+        price: string
+        link: string
+        image: string
+        rating: string
+        reviews: string
+      }>
+    }
+    description?: string
+  }
+  softwareTools?: {
+    type: 'software' | 'other'
+    tools?: Array<{
+      name: string
+      description: string
+      category: string
+      version: string
+    }>
+    description?: string
+  }
 }
 
 interface ApiResponse {
@@ -53,6 +104,57 @@ interface ApiResponse {
   videos?: any[]
   assessed_skill_level?: string
   knowledge_assessment?: string
+  github_templates?: {
+    repositories: Array<{
+      name: string
+      url: string
+      desc: string
+      readme?: string
+      analysis?: {
+        useful_for: string
+        match_score: string
+        pros: string[]
+        cons: string[]
+        customization: string
+      }
+    }>
+    tools: {
+      type: 'software'
+      tools?: string[]
+      description?: string
+    }
+  }
+  hardware_suggestions?: {
+    type: 'hardware'
+    suggestions?: string
+    components?: Array<{
+      name: string
+      quantity: string
+      purpose: string
+      cost: string
+    }>
+    shopping_links?: {
+      [componentName: string]: Array<{
+        title: string
+        price: string
+        link: string
+        image: string
+        rating: string
+        reviews: string
+      }>
+    }
+    description?: string
+  }
+  software_tools?: {
+    type: 'software' | 'other'
+    tools?: Array<{
+      name: string
+      description: string
+      category: string
+      version: string
+    }>
+    description?: string
+  }
 }
 
 export default function DIYGeneratorPage() {
@@ -60,28 +162,53 @@ export default function DIYGeneratorPage() {
     topic: "",
     experienceLevel: [3],
     availableHours: "",
+    category: "software",
     youtubeUrl: "",
     userDescription: "",
   })
   const [roadmap, setRoadmap] = useState<ProjectRoadmap | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mermaidCode, setMermaidCode] = useState<string | null>(null)
-  const [isGeneratingMermaid, setIsGeneratingMermaid] = useState(false)
-  const [suggestions] = useState([
+  const [projectSuggestions] = useState([
     "Build a Weather App",
     "Create a Personal Portfolio",
-    "Design a Mobile Game",
+    "Develop a Task Management System",
     "Build a Chat Application",
-    "Create an E-commerce Site",
-    "Develop a Task Manager",
-    "Build a Blog Platform",
-    "Create a Recipe App",
-    "Machine Learning Image Classifier",
-    "Data Analysis Dashboard",
-    "Natural Language Processing Chatbot",
-    "Computer Vision Object Detection",
+    "Create a Blog Platform",
+    "Develop a Recipe Finder App",
+    "Build a Fitness Tracker",
+    "Create an E-commerce Website",
+    "Develop a Social Media Dashboard",
+    "Build a Learning Management System"
   ])
+
+  // Category-based project suggestions
+  const getCategorySuggestions = (category: string) => {
+    const suggestions = {
+      software: [
+        "Build a Weather App",
+        "Create a Personal Portfolio",
+        "Develop a Task Management System",
+        "Build a Chat Application",
+        "Create a Blog Platform"
+      ],
+      hardware: [
+        "Build a Smart Home Controller",
+        "Create a Weather Station",
+        "Develop a Plant Monitoring System",
+        "Build a Motion Detection Alarm",
+        "Create a LED Display Board"
+      ],
+      other: [
+        "Create a Digital Art Portfolio",
+        "Build a Podcast Recording Setup",
+        "Develop a Photography Project",
+        "Create a Music Production Setup",
+        "Build a 3D Printing Project"
+      ]
+    }
+    return suggestions[category as keyof typeof suggestions] || suggestions.software
+  }
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"
 
@@ -98,7 +225,6 @@ export default function DIYGeneratorPage() {
 
     setIsGenerating(true)
     setError(null)
-    setMermaidCode(null)
 
     try {
       const skillLevel = getExperienceLabel(formData.experienceLevel[0]).toLowerCase()
@@ -106,6 +232,7 @@ export default function DIYGeneratorPage() {
         topic: formData.topic,
         available_time: `${formData.availableHours} hours`,
         skill_level: skillLevel,
+        category: formData.category,
         user_description: formData.userDescription,
         youtube_url: formData.youtubeUrl || "",
       }
@@ -137,6 +264,12 @@ export default function DIYGeneratorPage() {
         projectOverview: data.project_data?.project_overview || "",
         domain: data.project_data?.domain || "",
         templatesHints: data.project_data?.templates_hints || "",
+        githubTemplates: data.github_templates || { 
+          repositories: [], 
+          tools: { type: 'software', tools: [], description: "" } 
+        },
+        hardwareSuggestions: data.hardware_suggestions || undefined,
+        softwareTools: data.software_tools || undefined,
       }
       
       // Debug: Log the tools and materials data
@@ -145,7 +278,6 @@ export default function DIYGeneratorPage() {
       console.log('Full project data:', data.project_data)
 
       setRoadmap(transformedRoadmap)
-      await fetchMermaidCode(data.project_data)
       toast({
         title: "Roadmap Generated!",
         description: "Your personalized project roadmap has been created successfully.",
@@ -255,27 +387,122 @@ export default function DIYGeneratorPage() {
     }
   }
 
-  const fetchMermaidCode = async (projectData: any) => {
-    try {
-      setIsGeneratingMermaid(true)
-      const response = await fetch(`${BACKEND_URL}/api/generate-mermaid-roadmap`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_data: projectData }),
-      })
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-      const data = await response.json()
-      if (data.success) {
-        setMermaidCode(data.mermaid_code)
-        console.log('Mermaid code:', data.mermaid_code)
-      } else {
-        throw new Error(data.error || 'Failed to generate Mermaid roadmap')
+  const parseHardwareSuggestions = (suggestionsText: string) => {
+    if (!suggestionsText) return null
+    
+    const sections: any = {}
+    const lines = suggestionsText.split('\n')
+    let currentSection = ''
+    let currentContent: string[] = []
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim()
+      
+      // Check for section headers
+      if (trimmedLine.includes('CIRCUIT DIAGRAM:')) {
+        if (currentSection && currentContent.length > 0) {
+          sections[currentSection] = currentContent.join('\n').trim()
+        }
+        currentSection = 'circuitDiagram'
+        currentContent = []
+      } else if (trimmedLine.includes('COMPONENT LIST:')) {
+        if (currentSection && currentContent.length > 0) {
+          sections[currentSection] = currentContent.join('\n').trim()
+        }
+        currentSection = 'componentList'
+        currentContent = []
+      } else if (trimmedLine.includes('POWER REQUIREMENTS:')) {
+        if (currentSection && currentContent.length > 0) {
+          sections[currentSection] = currentContent.join('\n').trim()
+        }
+        currentSection = 'powerRequirements'
+        currentContent = []
+      } else if (trimmedLine.includes('TOOLS NEEDED:')) {
+        if (currentSection && currentContent.length > 0) {
+          sections[currentSection] = currentContent.join('\n').trim()
+        }
+        currentSection = 'toolsNeeded'
+        currentContent = []
+      } else if (trimmedLine.includes('LEARNING RESOURCES:')) {
+        if (currentSection && currentContent.length > 0) {
+          sections[currentSection] = currentContent.join('\n').trim()
+        }
+        currentSection = 'learningResources'
+        currentContent = []
+      } else if (trimmedLine.includes('IMPLEMENTATION NOTES:')) {
+        if (currentSection && currentContent.length > 0) {
+          sections[currentSection] = currentContent.join('\n').trim()
+        }
+        currentSection = 'implementationNotes'
+        currentContent = []
+      } else if (currentSection && trimmedLine) {
+        currentContent.push(trimmedLine)
       }
-    } catch (err) {
-      setMermaidCode(null)
-    } finally {
-      setIsGeneratingMermaid(false)
     }
+    
+    // Add the last section
+    if (currentSection && currentContent.length > 0) {
+      sections[currentSection] = currentContent.join('\n').trim()
+    }
+    
+    return sections
+  }
+
+  const parseComponentList = (componentListText: string) => {
+    if (!componentListText) return []
+    
+    const components: any[] = []
+    const lines = componentListText.split('\n')
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim()
+      if (trimmedLine.startsWith('-') && trimmedLine.includes(' - ')) {
+        const parts = trimmedLine.replace('-', '').trim().split(' - ')
+        if (parts.length >= 3) {
+          components.push({
+            name: parts[0].trim(),
+            quantity: parts[1].trim(),
+            purpose: parts[2].trim(),
+            cost: parts[3]?.trim() || 'Varies'
+          })
+        }
+      }
+    }
+    
+    return components
+  }
+
+  const parseSoftwareTools = (toolsText: string) => {
+    if (!toolsText) return []
+    
+    const tools: any[] = []
+    const lines = toolsText.split('\n')
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim()
+      if (trimmedLine.startsWith('-') && trimmedLine.includes('(') && trimmedLine.includes(')')) {
+        const toolPart = trimmedLine.replace('-', '').trim()
+        const name = toolPart.split('(')[0].trim()
+        const description = toolPart.split('(')[1].split(')')[0].trim()
+        
+        tools.push({
+          name: name,
+          description: description,
+          category: 'development_tool',
+          version: 'Latest'
+        })
+      } else if (trimmedLine.startsWith('-')) {
+        const name = trimmedLine.replace('-', '').trim()
+        tools.push({
+          name: name,
+          description: 'Essential for this project',
+          category: 'development_tool',
+          version: 'Latest'
+        })
+      }
+    }
+    
+    return tools
   }
 
   return (
@@ -323,6 +550,7 @@ export default function DIYGeneratorPage() {
                     />
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
                       Experience Level: <span className="text-slate-600 font-medium">{getExperienceLabel(formData.experienceLevel[0])}</span>
@@ -353,6 +581,86 @@ export default function DIYGeneratorPage() {
                       onChange={(e) => setFormData({ ...formData, availableHours: e.target.value })}
                       className="mt-1 border-slate-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-500"
                     />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 block">
+                      Project Category
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div
+                        onClick={() => setFormData({ ...formData, category: 'software' })}
+                        className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 hover:shadow-md ${
+                          formData.category === 'software'
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
+                            : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
+                        }`}
+                      >
+                        {formData.category === 'software' && (
+                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        <div className="flex flex-col items-center text-center space-y-2">
+                          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <Code className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-slate-800 dark:text-slate-200">Software</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">Apps, Websites, APIs</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        onClick={() => setFormData({ ...formData, category: 'hardware' })}
+                        className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 hover:shadow-md ${
+                          formData.category === 'hardware'
+                            ? 'border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-400'
+                            : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
+                        }`}
+                      >
+                        {formData.category === 'hardware' && (
+                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        <div className="flex flex-col items-center text-center space-y-2">
+                          <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                            <Cpu className="w-5 h-5 text-green-600 dark:text-green-400" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-slate-800 dark:text-slate-200">Hardware</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">IoT, Electronics, Robotics</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        onClick={() => setFormData({ ...formData, category: 'other' })}
+                        className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 hover:shadow-md ${
+                          formData.category === 'other'
+                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-400'
+                            : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
+                        }`}
+                      >
+                        {formData.category === 'other' && (
+                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        <div className="flex flex-col items-center text-center space-y-2">
+                          <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                            <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-slate-800 dark:text-slate-200">Other</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">Creative, Mixed Media</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -412,6 +720,15 @@ export default function DIYGeneratorPage() {
                 </form>
               </CardContent>
             </Card>
+
+            {/* Results Section */}
+            {roadmap && (
+              <div className="mt-6">
+                <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  
+                </Card>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -429,17 +746,14 @@ export default function DIYGeneratorPage() {
               </CardHeader>
               <CardContent className="p-3">
                 <div className="grid grid-cols-1 gap-2">
-                  {suggestions.map((suggestion, index) => (
+                  {getCategorySuggestions(formData.category).map((suggestion, index) => (
                     <button
                       key={index}
                       onClick={() => handleSuggestionClick(suggestion)}
-                      className="p-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded hover:border-slate-300 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors text-left group"
+                      className="w-full text-left p-3 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors duration-200"
                     >
-                      <div className="flex items-center space-x-2">
-                        <Target className="h-3 w-3 text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300" />
-                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">
+                      <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
                           {suggestion}
-                        </span>
                       </div>
                     </button>
                   ))}
@@ -517,156 +831,231 @@ export default function DIYGeneratorPage() {
         {/* Generated Roadmap */}
         {roadmap && (
           <div className="mt-8">
-            {/* Mermaid Roadmap Section */}
-            {mermaidCode && mermaidCode.trim() && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold mb-4 text-center text-slate-800 dark:text-slate-200">
-                  Project Roadmap Flowchart
-                </h2>
-                <MermaidRoadmap mermaidCode={mermaidCode} />
-              </div>
-            )}
-            <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-              <CardHeader className="border-b border-slate-200 dark:border-slate-700 pb-4">
+            {/* Main Roadmap Card */}
+            <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg">
+              <CardHeader className="border-b border-slate-200 dark:border-slate-700 pb-6 bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-700 dark:to-blue-900/20">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-200">
+                  <div className="space-y-2">
+                    <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200">
                       {roadmap.title}
                     </CardTitle>
-                    <CardDescription className="text-slate-600 dark:text-slate-400">
-                      Your personalized project roadmap
+                    <CardDescription className="text-slate-600 dark:text-slate-400 text-base">
+                      Your personalized project roadmap with step-by-step guidance
                     </CardDescription>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <Badge className={`border ${getExperienceColor(roadmap.experienceLevel)}`}>
+                  <div className="flex items-center space-x-4">
+                    <Badge className={`border text-sm px-3 py-1 ${getExperienceColor(roadmap.experienceLevel)}`}>
                       {roadmap.experienceLevel}
                     </Badge>
-                    <div className="flex items-center space-x-1 text-sm text-slate-600 dark:text-slate-400">
-                      <Clock className="h-3 w-3" />
-                      <span>{roadmap.totalDuration}</span>
+                    <div className="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-700 px-3 py-1 rounded-full">
+                      <Clock className="h-4 w-4" />
+                      <span className="font-medium">{roadmap.totalDuration}</span>
                     </div>
                   </div>
                 </div>
               </CardHeader>
               
-              <CardContent className="p-6">
-                <div className="grid lg:grid-cols-3 gap-6">
-                  {/* Project Overview */}
-                  <div className="lg:col-span-2 space-y-4">
-                    {/* Project Overview Section */}
-                    {roadmap.projectOverview && (
-                      <div className="mb-6">
-                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
-                          <Eye className="h-4 w-4 text-slate-600" />
-                          <span>Project Overview</span>
-                        </h3>
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                            {roadmap.projectOverview}
-                          </p>
+              <CardContent className="p-8">
+                <div className="space-y-10">
+                  {/* Project Overview - Enhanced */}
+                  {roadmap.projectOverview && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+                      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                          <Eye className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
+                        <span>Project Overview</span>
+                      </h3>
+                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-base">
+                        {roadmap.projectOverview}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Project Stats Grid - Enhanced */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* Domain */}
+                    {roadmap.domain && (
+                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                            <Package className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                          </div>
+                          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Domain</h4>
+                        </div>
+                        <Badge className="bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800 text-sm">
+                          {roadmap.domain}
+                        </Badge>
                       </div>
                     )}
 
-                    {/* Project Details Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                      {/* Domain */}
-                      {roadmap.domain && (
-                        <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
-                          <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center space-x-2">
-                            <Package className="h-3 w-3 text-slate-600" />
-                            <span>Domain</span>
-                          </h4>
-                          <Badge className="bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
-                            {roadmap.domain}
-                          </Badge>
+                    {/* Difficulty Level */}
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                          <Target className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                         </div>
-                      )}
-
-                      {/* Difficulty Level */}
-                      <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
-                        <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center space-x-2">
-                          <Target className="h-3 w-3 text-slate-600" />
-                          <span>Difficulty</span>
-                        </h4>
-                        <Badge className={`border ${getExperienceColor(roadmap.experienceLevel)}`}>
-                          {roadmap.experienceLevel}
-                        </Badge>
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Difficulty</h4>
                       </div>
-
-                      {/* Time Estimate */}
-                      <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
-                        <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center space-x-2">
-                          <Clock className="h-3 w-3 text-slate-600" />
-                          <span>Time Estimate</span>
-                        </h4>
-                        <span className="text-sm text-slate-700 dark:text-slate-300">{roadmap.totalDuration}</span>
-                      </div>
-
-                      {/* Knowledge Assessment */}
-                      {roadmap.knowledgeAssessment && (
-                        <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
-                          <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center space-x-2">
-                            <Brain className="h-3 w-3 text-slate-600" />
-                            <span>Knowledge Level</span>
-                          </h4>
-                          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                            {roadmap.knowledgeAssessment}
-                          </p>
-                        </div>
-                      )}
+                      <Badge className={`border text-sm ${getExperienceColor(roadmap.experienceLevel)}`}>
+                        {roadmap.experienceLevel}
+                      </Badge>
                     </div>
 
-                    {/* Learning Objectives */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
-                        <Target className="h-4 w-4 text-slate-600" />
-                        <span>Learning Objectives</span>
+                    {/* Time Estimate */}
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                          <Clock className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        </div>
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Time Estimate</h4>
+                      </div>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{roadmap.totalDuration}</span>
+                    </div>
+
+                    {/* Knowledge Assessment */}
+                    {roadmap.knowledgeAssessment && (
+                      <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-indigo-200 dark:border-indigo-800">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                            <Brain className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Knowledge Level</h4>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                          {roadmap.knowledgeAssessment}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tools & Materials - Enhanced */}
+                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-6 border border-emerald-200 dark:border-emerald-800">
+                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                      <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                        <Package className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <span>Tools & Materials</span>
+                    </h3>
+                    
+                    {/* Software Tools - Structured Display */}
+                    {roadmap.softwareTools && roadmap.softwareTools.tools && roadmap.softwareTools.tools.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {roadmap.softwareTools.tools.map((tool, index) => (
+                            <div key={index} className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-emerald-200 dark:border-emerald-700 shadow-sm">
+                              <div className="flex items-start space-x-3">
+                                <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></div>
+                                <div className="flex-1">
+                                  <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                                    {tool.name}
+                                  </h4>
+                                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    {tool.description}
+                                  </p>
+                                  <div className="flex items-center space-x-2 mt-2">
+                                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 text-xs">
+                                      {tool.category}
+                                    </Badge>
+                                    <Badge className={`text-xs ${
+                                      roadmap.softwareTools?.type === 'software' 
+                                        ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800'
+                                        : 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800'
+                                    }`}>
+                                      {roadmap.softwareTools?.type === 'software' ? tool.version : 'Required'}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      /* Fallback to regular tools display */
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {roadmap.tools && roadmap.tools.length > 0 ? (
+                          roadmap.tools.map((tool, index) => (
+                            <div key={index} className="flex items-start space-x-3 bg-white dark:bg-slate-700 rounded-lg p-3 border border-emerald-200 dark:border-emerald-700 shadow-sm">
+                              <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></div>
+                              <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">{tool}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-sm text-slate-500 dark:text-slate-500 italic col-span-2 text-center py-4">
+                            No tools and materials specified
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Prerequisites - Enhanced */}
+                  {roadmap.prerequisites && roadmap.prerequisites.length > 0 && (
+                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+                      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                          <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <span>Prerequisites</span>
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {roadmap.learningObjectives?.map((objective, index) => (
-                          <div key={index} className="flex items-start space-x-2 bg-slate-50 dark:bg-slate-700 rounded p-2">
-                            <CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-xs text-slate-700 dark:text-slate-300">{objective}</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {roadmap.prerequisites.map((prereq, index) => (
+                          <div key={index} className="flex items-start space-x-3 bg-white dark:bg-slate-700 rounded-lg p-3 border border-blue-200 dark:border-blue-700 shadow-sm">
+                            <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">{prereq}</span>
                           </div>
                         ))}
                       </div>
                     </div>
+                  )}
 
-                    {/* Templates & Hints */}
-                    {roadmap.templatesHints && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
-                          <Sparkles className="h-4 w-4 text-slate-600" />
-                          <span>Templates & Hints</span>
-                        </h3>
-                        <Card className="border border-slate-200 dark:border-slate-700">
-                          <CardContent className="p-3">
-                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                              {roadmap.templatesHints}
-                            </p>
-                          </CardContent>
-                        </Card>
+                  {/* Learning Objectives - Enhanced */}
+                  {roadmap.learningObjectives && roadmap.learningObjectives.length > 0 && (
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-6 border border-purple-200 dark:border-purple-800">
+                      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                          <Target className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <span>Learning Objectives</span>
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {roadmap.learningObjectives.map((objective, index) => (
+                          <div key={index} className="flex items-start space-x-3 bg-white dark:bg-slate-700 rounded-lg p-3 border border-purple-200 dark:border-purple-700 shadow-sm">
+                            <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">{objective}</span>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Project Timeline */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-slate-600" />
+                  {/* Project Timeline - Enhanced */}
+                  <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl p-6 border border-orange-200 dark:border-orange-800">
+                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-6 flex items-center space-x-3">
+                      <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                        <Calendar className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                      </div>
                         <span>Project Timeline</span>
                       </h3>
-                      <div className="space-y-3">
+                    <div className="space-y-4">
                         {roadmap.days.map((day, index) => (
-                          <Card key={index} className="border border-slate-200 dark:border-slate-700">
-                            <CardHeader className="pb-2">
+                        <Card key={index} className="border border-orange-200 dark:border-orange-700 bg-white dark:bg-slate-700 shadow-sm">
+                          <CardHeader className="pb-3">
                               <div className="flex items-center justify-between">
-                                <CardTitle className="text-sm text-slate-800 dark:text-slate-200">
-                                  Day {day.day}: {day.title}
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                                  <span className="text-orange-600 dark:text-orange-400 font-bold text-sm">{day.day}</span>
+                                </div>
+                                <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-200">
+                                  {day.title}
                                 </CardTitle>
-                                <div className="flex items-center space-x-2">
-                                  <Clock className="h-3 w-3 text-slate-500" />
-                                  <span className="text-xs text-slate-600 dark:text-slate-400">{day.duration}</span>
+                              </div>
+                              <div className="flex items-center space-x-3">
+                                <div className="flex items-center space-x-1 text-sm text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-600 px-2 py-1 rounded-full">
+                                  <Clock className="h-3 w-3" />
+                                  <span className="font-medium">{day.duration}</span>
+                                </div>
                                   {day.milestone && (
                                     <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 text-xs">
                                       Milestone
@@ -675,34 +1064,34 @@ export default function DIYGeneratorPage() {
                                 </div>
                               </div>
                             </CardHeader>
-                            <CardContent>
-                              <div className="space-y-4">
+                          <CardContent className="pt-0">
+                            <div className="space-y-3">
                                 {/* Tasks */}
                                 <div className="space-y-2">
                                   {day.tasks.map((task, taskIndex) => (
-                                    <div key={taskIndex} className="flex items-start space-x-2 bg-slate-50 dark:bg-slate-700 rounded p-2">
-                                      <div className="w-4 h-4 bg-slate-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <div key={taskIndex} className="flex items-start space-x-3 bg-slate-50 dark:bg-slate-600 rounded-lg p-3">
+                                    <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
                                         <span className="text-white text-xs font-bold">{taskIndex + 1}</span>
                                       </div>
-                                      <span className="text-xs text-slate-700 dark:text-slate-300">{task}</span>
+                                    <span className="text-sm text-slate-700 dark:text-slate-300">{task}</span>
                                     </div>
                                   ))}
                                 </div>
                                 
                                 {/* Videos for this phase */}
                                 {day.videos && day.videos.length > 0 && (
-                                  <div className="pt-3 border-t border-slate-200 dark:border-slate-600">
-                                    <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center space-x-2">
-                                      <Play className="h-3 w-3 text-red-600" />
+                                <div className="pt-4 border-t border-slate-200 dark:border-slate-600">
+                                  <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                                    <Play className="h-4 w-4 text-red-600" />
                                       <span>Learning Videos</span>
                                     </h4>
-                                    <div className="grid grid-cols-1 gap-2">
+                                  <div className="grid grid-cols-1 gap-3">
                                       {day.videos.map((video, videoIndex) => (
-                                        <Card key={videoIndex} className="border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
-                                          <CardContent className="p-2">
-                                            <div className="space-y-1">
+                                      <Card key={videoIndex} className="border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-colors bg-white dark:bg-slate-700">
+                                        <CardContent className="p-3">
+                                          <div className="space-y-2">
                                               <div className="flex items-start justify-between">
-                                                <h5 className="text-xs font-medium text-slate-800 dark:text-slate-200 line-clamp-2">
+                                              <h5 className="text-sm font-medium text-slate-800 dark:text-slate-200 line-clamp-2">
                                                   {video.title}
                                                 </h5>
                                               </div>
@@ -750,108 +1139,460 @@ export default function DIYGeneratorPage() {
                       </div>
                     </div>
 
+                  {/* Additional Sections */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Templates & Hints */}
+                    {roadmap.templatesHints && (
+                      <div className="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-xl p-6 border border-yellow-200 dark:border-yellow-800">
+                        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                          <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                            <Sparkles className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                          </div>
+                          <span>Templates & Hints</span>
+                        </h3>
+                        <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-yellow-200 dark:border-yellow-700">
+                          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            {roadmap.templatesHints}
+                          </p>
+                      </div>
+                  </div>
+                    )}
+
                     {/* Success Criteria */}
                     {roadmap.successCriteria && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-slate-600" />
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800">
+                        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                          <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            </div>
                           <span>Success Criteria</span>
                         </h3>
-                        <Card className="border border-slate-200 dark:border-slate-700">
-                          <CardContent className="p-3">
-                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                              {roadmap.successCriteria}
-                            </p>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    )}
-
-                    {/* Next Steps */}
-                    {roadmap.nextSteps && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
-                          <ArrowRight className="h-4 w-4 text-slate-600" />
-                          <span>Next Steps & Extensions</span>
-                        </h3>
-                        <Card className="border border-slate-200 dark:border-slate-700">
-                          <CardContent className="p-3">
-                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                              {roadmap.nextSteps}
-                            </p>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Sidebar */}
-                  <div className="space-y-4">
-                    {/* Prerequisites */}
-                    {roadmap.prerequisites && roadmap.prerequisites.length > 0 && (
-                      <Card className="border border-slate-200 dark:border-slate-700">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm text-slate-800 dark:text-slate-200 flex items-center space-x-2">
-                            <FileText className="h-3 w-3 text-slate-600" />
-                            <span>Prerequisites</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-1">
-                            {roadmap.prerequisites.map((prereq, index) => (
-                              <div key={index} className="flex items-start space-x-2 text-xs text-slate-600 dark:text-slate-400">
-                                <div className="w-1 h-1 bg-slate-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                                <span>{prereq}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {/* Tools & Materials */}
-                    <Card className="border border-slate-200 dark:border-slate-700">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm text-slate-800 dark:text-slate-200 flex items-center space-x-2">
-                          <Package className="h-3 w-3 text-slate-600" />
-                          <span>Tools & Materials</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-1">
-                          {roadmap.tools && roadmap.tools.length > 0 ? (
-                            roadmap.tools.map((tool, index) => (
-                              <div key={index} className="flex items-start space-x-2 text-xs text-slate-600 dark:text-slate-400">
-                                <div className="w-1 h-1 bg-slate-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                                <span>{tool}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-xs text-slate-500 dark:text-slate-500 italic">
-                              No tools and materials specified
+                        <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            {roadmap.successCriteria}
+                          </p>
+                        </div>
                             </div>
                           )}
                         </div>
-                      </CardContent>
-                    </Card>
+
+                  {/* Next Steps */}
+                  {roadmap.nextSteps && (
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
+                      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                        <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                          <ArrowRight className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <span>Next Steps & Extensions</span>
+                      </h3>
+                      <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-indigo-200 dark:border-indigo-700">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                          {roadmap.nextSteps}
+                        </p>
+                      </div>
+                    </div>
+                    )}
 
                     {/* Common Pitfalls */}
                     {roadmap.commonPitfalls && (
-                      <Card className="border border-slate-200 dark:border-slate-700">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm text-slate-800 dark:text-slate-200 flex items-center space-x-2">
-                            <AlertCircle className="h-3 w-3 text-slate-600" />
-                            <span>Common Pitfalls</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <div className="bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 rounded-xl p-6 border border-red-200 dark:border-red-800">
+                      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                        <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                          <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        </div>
+                        <span>Common Pitfalls & Troubleshooting</span>
+                      </h3>
+                      <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-red-200 dark:border-red-700">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                             {roadmap.commonPitfalls}
                           </p>
-                        </CardContent>
-                      </Card>
-                    )}
                   </div>
+                    </div>
+                  )}
+
+                  {/* GitHub Starter Templates */}
+                  {roadmap.githubTemplates && roadmap.githubTemplates.repositories && roadmap.githubTemplates.repositories.length > 0 && (
+                    <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-800 dark:to-gray-900/20 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+                      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                        <div className="p-2 bg-slate-100 dark:bg-slate-900/30 rounded-lg">
+                          <Code className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                        </div>
+                        <span>GitHub Starter Templates</span>
+                      </h3>
+                      <div className="space-y-4">
+                        {roadmap.githubTemplates.repositories.map((repo, index) => (
+                          <Card key={index} className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600">
+                            <CardHeader>
+                              <CardTitle className="text-base text-blue-600 dark:text-blue-400 hover:underline">
+                                <a href={repo.url} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2">
+                                  <span>{repo.name}</span>
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              </CardTitle>
+                              <CardDescription className="text-xs text-slate-600 dark:text-slate-400">{repo.desc}</CardDescription>
+                            </CardHeader>
+                            {repo.analysis && (
+                              <CardContent>
+                                <div className="space-y-3">
+                                  <div className="flex items-center text-sm">
+                                    <strong className="w-28 text-slate-700 dark:text-slate-300">Match Score:</strong>
+                                    <Badge variant="secondary">{repo.analysis.match_score}</Badge>
+                                  </div>
+                                  <div className="flex items-start text-sm">
+                                    <strong className="w-28 text-slate-700 dark:text-slate-300 flex-shrink-0">Useful For:</strong>
+                                    <span className="text-slate-600 dark:text-slate-400">{repo.analysis.useful_for}</span>
+                                  </div>
+                                  <div>
+                                    <strong className="text-sm text-slate-700 dark:text-slate-300">Pros:</strong>
+                                    <ul className="list-disc list-inside mt-1 space-y-1">
+                                      {repo.analysis.pros.map((pro, i) => (
+                                        <li key={i} className="text-xs text-slate-600 dark:text-slate-400">{pro}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                  <div>
+                                    <strong className="text-sm text-slate-700 dark:text-slate-300">Cons:</strong>
+                                    <ul className="list-disc list-inside mt-1 space-y-1">
+                                      {repo.analysis.cons.map((con, i) => (
+                                        <li key={i} className="text-xs text-slate-600 dark:text-slate-400">{con}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            )}
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hardware Suggestions */}
+                  {roadmap.hardwareSuggestions && (
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800">
+                      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                          <Cpu className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <span>Hardware Components</span>
+                      </h3>
+                      
+                      {roadmap.hardwareSuggestions.description && (
+                        <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-green-200 dark:border-green-700 mb-6">
+                          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">Project Overview</h4>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            {roadmap.hardwareSuggestions.description}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Parse and display structured content from suggestions */}
+                      {roadmap.hardwareSuggestions.suggestions && (() => {
+                        const parsedSections = parseHardwareSuggestions(roadmap.hardwareSuggestions.suggestions)
+                        return (
+                          <div className="space-y-6">
+                            {/* Circuit Diagram */}
+                            {parsedSections?.circuitDiagram && (
+                              <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                                  <Zap className="h-4 w-4 text-blue-600" />
+                                  <span>Circuit Diagram</span>
+                                </h4>
+                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                  {parsedSections.circuitDiagram}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Component List */}
+                            {parsedSections?.componentList && (() => {
+                              const components = parseComponentList(parsedSections.componentList)
+                              return components.length > 0 ? (
+                                <div>
+                                  <h4 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-2">
+                                    <Package className="h-4 w-4 text-green-600" />
+                                    <span>Required Components</span>
+                                  </h4>
+                                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    {components.map((component, index) => (
+                                      <Card key={index} className="bg-white dark:bg-slate-700 border-green-200 dark:border-green-700 shadow-sm">
+                                        <CardHeader className="pb-3">
+                                          <div className="flex items-center justify-between">
+                                            <CardTitle className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                              {component.name}
+                                            </CardTitle>
+                                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                                              {component.cost}
+                                            </Badge>
+                                          </div>
+                                        </CardHeader>
+                                        <CardContent className="pt-0">
+                                          <div className="space-y-3">
+                                            <div className="grid grid-cols-2 gap-3 text-xs">
+                                              <div className="bg-slate-50 dark:bg-slate-600 rounded p-2">
+                                                <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Quantity</div>
+                                                <div className="text-slate-600 dark:text-slate-400">{component.quantity}</div>
+                                              </div>
+                                              <div className="bg-slate-50 dark:bg-slate-600 rounded p-2">
+                                                <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Purpose</div>
+                                                <div className="text-slate-600 dark:text-slate-400">{component.purpose}</div>
+                                              </div>
+                                            </div>
+                                            
+                                            {/* Shopping Links */}
+                                            {roadmap.hardwareSuggestions && 
+                                             roadmap.hardwareSuggestions.shopping_links && 
+                                             roadmap.hardwareSuggestions.shopping_links[component.name] && 
+                                             roadmap.hardwareSuggestions.shopping_links[component.name].length > 0 && (
+                                              <div className="pt-3 border-t border-slate-200 dark:border-slate-600">
+                                                <div className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center space-x-2">
+                                                  <ExternalLink className="h-3 w-3" />
+                                                  <span>Shopping Options</span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                  {roadmap.hardwareSuggestions.shopping_links[component.name].slice(0, 2).map((item, itemIndex) => (
+                                                    <a
+                                                      key={itemIndex}
+                                                      href={item.link}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="block bg-slate-50 dark:bg-slate-600 rounded-lg p-3 hover:bg-slate-100 dark:hover:bg-slate-500 transition-colors border border-slate-200 dark:border-slate-500"
+                                                    >
+                                                      <div className="space-y-2">
+                                                        <div className="text-xs font-medium text-slate-800 dark:text-slate-200 line-clamp-2">
+                                                          {item.title}
+                                                        </div>
+                                                        <div className="flex items-center justify-between">
+                                                          <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-400">
+                                                            <span className="font-semibold text-green-600 dark:text-green-400">{item.price}</span>
+                                                            {item.rating && (
+                                                              <>
+                                                                <span>•</span>
+                                                                <span className="flex items-center">
+                                                                  <span className="text-yellow-500 mr-1">⭐</span>
+                                                                  {item.rating}
+                                                                </span>
+                                                              </>
+                                                            )}
+                                                            {item.reviews && (
+                                                              <>
+                                                                <span>•</span>
+                                                                <span>({item.reviews} reviews)</span>
+                                                              </>
+                                                            )}
+                                                          </div>
+                                                          <ExternalLink className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                                                        </div>
+                                                      </div>
+                                                    </a>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null
+                            })()}
+
+                            {/* Power Requirements */}
+                            {parsedSections?.powerRequirements && (
+                              <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                                  <Zap className="h-4 w-4 text-yellow-600" />
+                                  <span>Power Requirements</span>
+                                </h4>
+                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                  {parsedSections.powerRequirements}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Tools Needed */}
+                            {parsedSections?.toolsNeeded && (
+                              <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                                  <Wrench className="h-4 w-4 text-orange-600" />
+                                  <span>Tools Needed</span>
+                                </h4>
+                                <div className="space-y-2">
+                                  {parsedSections.toolsNeeded.split('\n').map((tool: string, index: number) => {
+                                    if (tool.trim().startsWith('-')) {
+                                      return (
+                                        <div key={index} className="flex items-start space-x-2">
+                                          <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
+                                          <span className="text-sm text-slate-600 dark:text-slate-400">{tool.replace('-', '').trim()}</span>
+                                        </div>
+                                      )
+                                    }
+                                    return null
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Learning Resources */}
+                            {parsedSections?.learningResources && (
+                              <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                                  <FileText className="h-4 w-4 text-blue-600" />
+                                  <span>Learning Resources</span>
+                                </h4>
+                                <div className="space-y-2">
+                                  {parsedSections.learningResources.split('\n').map((resource: string, index: number) => {
+                                    if (resource.trim().startsWith('-') && resource.includes(' - ')) {
+                                      const parts = resource.replace('-', '').trim().split(' - ')
+                                      const name = parts[0]
+                                      const url = parts[1]
+                                      const description = parts[2]
+                                      
+                                      return (
+                                        <div key={index} className="space-y-1">
+                                          <a
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
+                                          >
+                                            <span>{name}</span>
+                                            <ExternalLink className="h-3 w-3" />
+                                          </a>
+                                          {description && (
+                                            <p className="text-xs text-slate-600 dark:text-slate-400">{description}</p>
+                                          )}
+                                        </div>
+                                      )
+                                    }
+                                    return null
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Implementation Notes */}
+                            {parsedSections?.implementationNotes && (
+                              <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
+                                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                                  <span>Implementation Notes</span>
+                                </h4>
+                                <div className="space-y-2">
+                                  {parsedSections.implementationNotes.split('\n').map((note: string, index: number) => {
+                                    if (note.trim().startsWith('-')) {
+                                      return (
+                                        <div key={index} className="flex items-start space-x-2">
+                                          <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-2 flex-shrink-0"></div>
+                                          <span className="text-sm text-slate-600 dark:text-slate-400">{note.replace('-', '').trim()}</span>
+                                        </div>
+                                      )
+                                    }
+                                    return null
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+
+                      {/* Fallback: Show structured components if available */}
+                      {(!roadmap.hardwareSuggestions.suggestions || !parseHardwareSuggestions(roadmap.hardwareSuggestions.suggestions)) && 
+                       roadmap.hardwareSuggestions.components && roadmap.hardwareSuggestions.components.length > 0 && (
+                        <div className="space-y-6">
+                          <div>
+                            <h4 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-2">
+                              <Package className="h-4 w-4 text-green-600" />
+                              <span>Required Components</span>
+                            </h4>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              {roadmap.hardwareSuggestions.components.map((component, index) => (
+                                <Card key={index} className="bg-white dark:bg-slate-700 border-green-200 dark:border-green-700 shadow-sm">
+                                  <CardHeader className="pb-3">
+                                    <div className="flex items-center justify-between">
+                                      <CardTitle className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                        {component.name}
+                                      </CardTitle>
+                                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                                        {component.cost}
+                                      </Badge>
+                                    </div>
+                                  </CardHeader>
+                                  <CardContent className="pt-0">
+                                    <div className="space-y-3">
+                                      <div className="grid grid-cols-2 gap-3 text-xs">
+                                        <div className="bg-slate-50 dark:bg-slate-600 rounded p-2">
+                                          <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Quantity</div>
+                                          <div className="text-slate-600 dark:text-slate-400">{component.quantity}</div>
+                                        </div>
+                                        <div className="bg-slate-50 dark:bg-slate-600 rounded p-2">
+                                          <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Purpose</div>
+                                          <div className="text-slate-600 dark:text-slate-400">{component.purpose}</div>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Shopping Links */}
+                                      {roadmap.hardwareSuggestions && 
+                                       roadmap.hardwareSuggestions.shopping_links && 
+                                       roadmap.hardwareSuggestions.shopping_links[component.name] && 
+                                       roadmap.hardwareSuggestions.shopping_links[component.name].length > 0 && (
+                                        <div className="pt-3 border-t border-slate-200 dark:border-slate-600">
+                                          <div className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center space-x-2">
+                                            <ExternalLink className="h-3 w-3" />
+                                            <span>Shopping Options</span>
+                                          </div>
+                                          <div className="space-y-2">
+                                            {roadmap.hardwareSuggestions.shopping_links[component.name].slice(0, 2).map((item, itemIndex) => (
+                                              <a
+                                                key={itemIndex}
+                                                href={item.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block bg-slate-50 dark:bg-slate-600 rounded-lg p-3 hover:bg-slate-100 dark:hover:bg-slate-500 transition-colors border border-slate-200 dark:border-slate-500"
+                                              >
+                                                <div className="space-y-2">
+                                                  <div className="text-xs font-medium text-slate-800 dark:text-slate-200 line-clamp-2">
+                                                    {item.title}
+                                                  </div>
+                                                  <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-400">
+                                                      <span className="font-semibold text-green-600 dark:text-green-400">{item.price}</span>
+                                                      {item.rating && (
+                                                        <>
+                                                          <span>•</span>
+                                                          <span className="flex items-center">
+                                                            <span className="text-yellow-500 mr-1">⭐</span>
+                                                            {item.rating}
+                                                          </span>
+                                                        </>
+                                                      )}
+                                                      {item.reviews && (
+                                                        <>
+                                                          <span>•</span>
+                                                          <span>({item.reviews} reviews)</span>
+                                                        </>
+                                                      )}
+                                                    </div>
+                                                    <ExternalLink className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                                                  </div>
+                                                </div>
+                                              </a>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

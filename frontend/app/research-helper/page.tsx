@@ -1,34 +1,32 @@
 "use client"
 
-import { useState, useRef, useEffect, Fragment } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useToast } from "@/hooks/use-toast"
 import {
-  Search,
   Bot,
-  User,
-  Send,
-  Calendar,
   Target,
   Clock,
-  Bookmark,
-  TrendingUp,
-  Globe,
-  Loader2,
-  BrainCircuit,
-  Lightbulb,
   FileText,
   Link as LinkIcon,
   ChevronsRight,
+  Loader2,
+  BrainCircuit,
+  Wrench,
+  Globe,
+  Code,
+  Cpu,
+  BookOpen,
+  FlaskConical,
+  Github,
+  Search,
+  Sparkles,
 } from "lucide-react"
 import {
   Accordion,
@@ -36,28 +34,28 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { Separator } from "@/components/ui/separator"
 
 // --- Constants ---
-const API_BASE_URL = "http://localhost:5005"
+const API_BASE_URL = "http://localhost:5003"
 
 // --- Type Definitions ---
-// Note: This matches the `research_supporter.py` output
-interface ChatResponse {
-  answer: string
-  key_takeaways?: string[]
-  follow_up_questions?: string[]
-  references?: { title: string; url: string }[]
+interface Tool {
+    name: string;
+    url?: string;
+    description: string;
 }
 
-interface Message {
-  id: string
-  sender: "user" | "ai"
-  content: string // For user messages
-  response?: ChatResponse // For AI messages
-  timestamp: Date
+interface ToolSuggestion {
+  success: boolean
+  project_type: "hardware" | "research" | "software"
+  tools: {
+    precise_topics?: string[];
+    data_links?: { name: string; url: string; description: string }[];
+    techniques?: { main: string; rest: string; main_url: string }[];
+  }
 }
 
-// Note: This matches the `roadmap_generator.py` output
 interface Roadmap {
   title: string
   description: string
@@ -77,181 +75,231 @@ interface Roadmap {
 
 // --- Helper Components ---
 const RoadmapDisplay = ({ roadmap }: { roadmap: Roadmap | null }) => {
-  if (!roadmap) return null
+  if (!roadmap || !Array.isArray(roadmap.modules)) return null;
 
   return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-3">
-          <Target /> {roadmap.title}
-        </CardTitle>
-        <CardDescription>{roadmap.description}</CardDescription>
-        <div className="flex items-center gap-4 pt-2 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            <span>Timeline: {roadmap.timeline}</span>
+    <div className="mt-6 w-full max-w-full overflow-hidden">
+      <Card className="border-dashed bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-[#181c24] dark:via-[#23283a] dark:to-[#181c24]">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-3 text-xl md:text-2xl break-words">
+            <Sparkles className="text-primary h-6 w-6 md:h-7 md:w-7 flex-shrink-0" /> 
+            <span className="min-w-0">{roadmap.title}</span>
+          </CardTitle>
+          <CardDescription className="text-base md:text-lg break-words">{roadmap.description}</CardDescription>
+          <div className="flex items-center gap-4 pt-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 flex-shrink-0" />
+              <span>Timeline: {roadmap.timeline}</span>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {roadmap.modules.map((module, moduleIndex) => (
-          <div key={moduleIndex}>
-            <h3 className="text-xl font-semibold mb-3 flex items-center">
-              <ChevronsRight className="mr-2 h-5 w-5" /> {module.title}
-            </h3>
-            <p className="text-muted-foreground mb-4 pl-7">{module.description}</p>
-            <Accordion type="multiple" className="w-full pl-7">
-              {module.tasks.map((task, taskIndex) => (
-                <AccordionItem key={taskIndex} value={`item-${moduleIndex}-${taskIndex}`}>
-                  <AccordionTrigger>
-                    <div className="flex justify-between items-center w-full pr-4">
-                      <span className="text-left font-semibold">
-                        Task {moduleIndex + 1}.{taskIndex + 1}: {task.title}
-                      </span>
-                      <Badge variant="outline">{task.type}</Badge>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-4">
-                    <p className="text-muted-foreground">{task.description}</p>
-                    <div>
-                      <h4 className="font-semibold mb-2 flex items-center">
-                        <FileText className="mr-2 h-4 w-4 text-blue-500" />
-                        Suggested Articles
-                      </h4>
-                      {task.resources && task.resources.length > 0 ? (
-                        <div className="space-y-2 text-sm">
-                          {task.resources.map((res, resIndex) => (
-                            <a
-                              key={resIndex}
-                              href={res.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 p-2 rounded-md hover:bg-muted-foreground/10 transition-colors"
-                            >
-                              <LinkIcon className="h-4 w-4 flex-shrink-0" />
-                              <span className="font-medium text-primary underline-offset-4 hover:underline">
-                                {res.title}
-                              </span>
-                            </a>
-                          ))}
+        </CardHeader>
+        <CardContent className="space-y-6 md:space-y-10 px-4 md:px-6">
+          {roadmap.modules.map((module, moduleIndex) => (
+            <div
+              key={moduleIndex}
+              className="relative rounded-xl md:rounded-2xl shadow-lg md:shadow-xl border-0 p-0 mb-6 md:mb-10 overflow-hidden group w-full"
+            >
+              {/* AI-themed gradient border */}
+              <div className="absolute inset-0 z-0 bg-gradient-to-br from-blue-400/30 via-fuchsia-400/20 to-cyan-400/30 dark:from-blue-900/40 dark:via-fuchsia-900/20 dark:to-cyan-900/30 rounded-xl md:rounded-2xl blur-[2px] group-hover:blur-sm transition-all duration-300" />
+              <div className="relative z-10 bg-white dark:bg-[#181c24] rounded-xl md:rounded-2xl p-4 md:p-6 border border-slate-200 dark:border-slate-800 w-full">
+                <div className="flex flex-col md:flex-row md:items-center mb-3 md:mb-2 gap-2 md:gap-0">
+                  <span className="text-lg md:text-xl font-bold text-primary mr-0 md:mr-3 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" /> 
+                    Module {moduleIndex + 1}
+                  </span>
+                  <h3 className="text-lg md:text-xl font-semibold flex items-center break-words">
+                    <ChevronsRight className="mr-2 h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" /> 
+                    <span className="min-w-0">{module.title}</span>
+                  </h3>
+                </div>
+                <p className="text-muted-foreground mb-4 pl-0 md:pl-7 text-sm md:text-base break-words">{module.description}</p>
+                <Accordion type="multiple" className="w-full pl-0 md:pl-7">
+                  {module.tasks.map((task, taskIndex) => (
+                    <AccordionItem
+                      key={taskIndex}
+                      value={`item-${moduleIndex}-${taskIndex}`}
+                      className="bg-muted/30 dark:bg-[#23283a] rounded-lg mb-3"
+                    >
+                      <AccordionTrigger className="text-base md:text-lg font-semibold px-3 md:px-4">
+                        <div className="flex flex-col md:flex-row md:justify-between md:items-center w-full pr-2 md:pr-4 gap-2 md:gap-0">
+                          <span className="text-left font-semibold break-words">
+                            Step {moduleIndex + 1}.{taskIndex + 1}: {task.title}
+                          </span>
+                          <span className="ml-0 md:ml-2 px-2 py-1 rounded bg-primary/10 text-primary text-xs select-none no-underline hover:no-underline focus:no-underline active:no-underline pointer-events-none self-start md:self-auto">
+                            {task.type}
+                          </span>
                         </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground pl-2 py-2">
-                          No scholarly articles were found for this task. This may be due to the topic's specificity or a system configuration issue.
-                        </p>
-                      )}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-4 px-3 md:px-4 pb-4">
+                        <p className="text-muted-foreground text-sm md:text-base break-words">{task.description}</p>
+                        <div>
+                          <h4 className="font-semibold mb-2 flex items-center text-sm md:text-base">
+                            <FileText className="mr-2 h-4 w-4 text-blue-500 flex-shrink-0" />
+                            Suggested Learning Resources
+                          </h4>
+                          {task.resources && task.resources.length > 0 ? (
+                            <div className="space-y-2 text-sm md:text-base">
+                              {task.resources.map((res, resIndex) => (
+                                <a
+                                  key={resIndex}
+                                  href={res.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex flex-col md:flex-row md:items-center gap-2 p-2 rounded-md border border-muted/30 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors break-words"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <LinkIcon className="h-4 w-4 flex-shrink-0 text-primary" />
+                                    <span className="font-medium text-primary underline-offset-4 hover:underline break-words">
+                                      {res.title}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground ml-0 md:ml-2 break-words">{res.snippet}</span>
+                                </a>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground pl-2 py-2">
+                              No resources found for this step.
+                            </p>
+                          )}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
+
+const ToolDisplay = ({ suggestion }: { suggestion: ToolSuggestion }) => {
+    const { tools } = suggestion;
+    return (
+        <div className="mt-8 space-y-6 md:space-y-8 w-full max-w-full overflow-hidden">
+            {/* Block 1: Suggested Precise Research Topics */}
+            <Card className="shadow-lg border-l-4 border-sky-500 w-full">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-lg md:text-xl">
+                        <BookOpen className="h-5 w-5 md:h-6 md:w-6 text-sky-500 flex-shrink-0" />
+                        Suggested Precise Research Topics
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="list-disc pl-4 md:pl-6 space-y-2">
+                        {tools.precise_topics && tools.precise_topics.map((topic, idx) => (
+                            <li key={idx} className="text-sm md:text-lg text-muted-foreground break-words">{topic}</li>
+                        ))}
+                    </ul>
+                </CardContent>
+            </Card>
+
+            {/* Block 2: Data Links */}
+            <Card className="shadow-lg border-l-4 border-green-500 w-full">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-lg md:text-xl">
+                        <Globe className="h-5 w-5 md:h-6 md:w-6 text-green-500 flex-shrink-0" />
+                        Data Related to Topic
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="space-y-3 md:space-y-4">
+                        {tools.data_links && tools.data_links.map((item, idx) => (
+                            <li key={idx} className="p-3 md:p-4 rounded-md bg-muted/50 border border-muted-foreground/20 break-words">
+                                <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-base md:text-lg hover:underline text-primary break-words">
+                                    {item.name}
+                                </a>
+                                <p className="text-muted-foreground mt-1 text-sm md:text-base break-words">{item.description}</p>
+                            </li>
+                        ))}
+                    </ul>
+                </CardContent>
+            </Card>
+
+            {/* Block 3: Techniques */}
+            <Card className="shadow-lg border-l-4 border-amber-500 w-full">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-lg md:text-xl">
+                        <FlaskConical className="h-5 w-5 md:h-6 md:w-6 text-amber-500 flex-shrink-0" />
+                        Suggested Research Techniques
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="list-disc pl-4 md:pl-6 space-y-2">
+                        {tools.techniques && tools.techniques.map((tech, idx) => (
+                            <li key={idx} className="text-sm md:text-lg text-muted-foreground break-words">
+                                <a href={tech.main_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline break-words">
+                                    {tech.main}
+                                </a>{tech.rest}
+                            </li>
+                        ))}
+                    </ul>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
 
 // --- Main Component ---
 export default function ResearchHelperPage() {
   const { toast } = useToast()
 
   // --- State Management ---
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "init",
-      sender: "ai",
-      content: "", // No content for AI message wrapper
-      response: {
-        answer: "Hello! I'm your AI Research Assistant. I can help you find papers, clarify concepts, and brainstorm ideas. What's on your mind?",
-      },
-      timestamp: new Date(),
-    },
-  ])
-  const [inputMessage, setInputMessage] = useState("")
-  const [isTyping, setIsTyping] = useState(false)
-  const scrollAreaRef = useRef<HTMLDivElement>(null)
-
+  const [projectIdea, setProjectIdea] = useState("")
+  const [toolSuggestion, setToolSuggestion] = useState<ToolSuggestion | null>(null)
+  const [isFindingTools, setIsFindingTools] = useState(false)
+  
   const [roadmapData, setRoadmapData] = useState({
-    topic: "Quantum Computing",
-    timeline: "3-6 Months",
-    detail_level: "Intermediate",
-    user_expertise: "I have a basic understanding of classical computer science and linear algebra.",
+    topic: "",
   })
+  const [skillLevel, setSkillLevel] = useState("Beginner")
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null)
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false)
 
-  // --- Effects ---
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
-    }
-  }, [messages, isTyping])
-
   // --- API Handlers ---
-  const handleSendMessage = async () => {
-    const messageContent = inputMessage.trim()
-    if (!messageContent) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      sender: "user",
-      content: messageContent,
-      timestamp: new Date(),
+  const handleFindTools = async () => {
+    if (!projectIdea.trim()) {
+      toast({ title: "Project Idea Required", description: "Please enter a project idea to get suggestions.", variant: "destructive" })
+      return
     }
-    setMessages((prev) => [...prev, userMessage])
-    setInputMessage("")
-    setIsTyping(true)
+
+    setIsFindingTools(true)
+    setToolSuggestion(null)
+    toast({ title: "Finding Tools...", description: "Searching for the best resources for your project." })
 
     try {
-      const history = messages
-        .map((m) => {
-          if (m.sender === "user") {
-            return `User: ${m.content}`
-          }
-          return `Assistant: ${m.response?.answer || ""}`
-        })
-        .slice(-6) // Send last 6 turns as history
-
-      const response = await fetch(`${API_BASE_URL}/chat`, {
+      const response = await fetch(`${API_BASE_URL}/api/suggest-tools`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: messageContent, history }),
+        body: JSON.stringify({ project_idea: projectIdea }),
       })
 
       if (!response.ok) {
         const err = await response.json()
-        throw new Error(err.error || "Failed to get a response from the assistant.")
+        throw new Error(err.error || "Failed to get tool suggestions.")
       }
 
-      const data: ChatResponse = await response.json()
-
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: "ai",
-        content: "", // AI message is a wrapper for the response object
-        response: data,
-        timestamp: new Date(),
+      const data: ToolSuggestion = await response.json()
+      if (data.success) {
+        setToolSuggestion(data)
+        toast({ title: "Success!", description: "Tool suggestions have been loaded." })
+      } else {
+        throw new Error((data as any).error || "An unknown error occurred in the backend.")
       }
-      setMessages((prev) => [...prev, aiMessage])
+
     } catch (error) {
-      console.error("Chat error:", error)
+      console.error("Tool suggestion error:", error)
       toast({
-        title: "Error",
+        title: "Error Finding Tools",
         description: error instanceof Error ? error.message : "An unknown error occurred.",
         variant: "destructive",
       })
-      // Add a message to the chat indicating failure
-      const errorMessage: Message = {
-        id: (Date.now() + 2).toString(),
-        sender: "ai",
-        content: "",
-        response: { answer: "I'm sorry, I couldn't get a response. Please check the server connection and try again." },
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, errorMessage])
     } finally {
-      setIsTyping(false)
+      setIsFindingTools(false)
     }
   }
 
@@ -263,14 +311,13 @@ export default function ResearchHelperPage() {
 
     setIsGeneratingRoadmap(true)
     setRoadmap(null)
-    toast({ title: "Generating Roadmap...", description: "Your personalized research plan is being created."})
-
+    toast({ title: "Generating Roadmap...", description: "Your personalized research plan is being created." })
 
     try {
-      const response = await fetch(`${API_BASE_URL}/generate-roadmap`, {
+      const response = await fetch(`${API_BASE_URL}/api/generate-roadmap`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(roadmapData),
+        body: JSON.stringify({ ...roadmapData, skill_level: skillLevel }),
       })
 
       if (!response.ok) {
@@ -279,18 +326,14 @@ export default function ResearchHelperPage() {
       }
 
       const data: Roadmap = await response.json()
-      if (data.error) { // Handle errors returned in the JSON body
-        throw new Error(data.error)
-      }
-
       setRoadmap(data)
       toast({ title: "Success", description: "Your research roadmap has been generated." })
     } catch (error) {
       console.error("Roadmap generation error:", error)
-      setRoadmap(null); // Clear any previous roadmap
+      setRoadmap(null)
       toast({
         title: "Roadmap Generation Failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred. Please ensure the backend server is running and API keys are set.",
+        description: error instanceof Error ? error.message : "An unknown error occurred.",
         variant: "destructive",
       })
     } finally {
@@ -300,207 +343,125 @@ export default function ResearchHelperPage() {
 
   // --- Render ---
   return (
-    <div className="container py-8 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-4">AI Research Helper</h1>
-        <p className="text-muted-foreground">
-          Your integrated environment for literature discovery, planning, and staying current.
+    <div className="container py-6 md:py-8 max-w-7xl mx-auto px-4 md:px-6">
+      <div className="mb-6 md:mb-8 text-center">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Research Helper</h1>
+        <p className="text-base md:text-lg text-muted-foreground">
+          Find the right tools for your project and plan your research journey.
         </p>
       </div>
 
-      <Tabs defaultValue="chatbot" className="w-full">
+      <Tabs defaultValue="tool-finder" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="chatbot">Research Chatbot</TabsTrigger>
+          <TabsTrigger value="tool-finder">Tool Finder</TabsTrigger>
           <TabsTrigger value="roadmap">Research Roadmap</TabsTrigger>
         </TabsList>
 
-        {/* Chatbot Tab */}
-        <TabsContent value="chatbot">
-          <Card>
+        {/* Tool Finder Tab */}
+        <TabsContent value="tool-finder">
+          <Card className="w-full">
             <CardHeader>
-              <CardTitle className="flex items-center"><BrainCircuit className="mr-2" /> AI Research Assistant</CardTitle>
-              <CardDescription>Ask questions, get summaries, and brainstorm ideas.</CardDescription>
+              <CardTitle className="flex items-center text-xl md:text-2xl"><Wrench className="mr-3 h-5 w-5 md:h-6 md:w-6 flex-shrink-0" /> Project Tool Finder</CardTitle>
+              <CardDescription className="text-sm md:text-base">Describe your project idea to get personalized recommendations for tools, datasets, and papers.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col h-[600px]">
-              <ScrollArea className="flex-grow pr-4" ref={scrollAreaRef}>
-                <div className="space-y-6">
-                  {messages.map((msg) => (
-                    <div key={msg.id} className={`flex items-start gap-4 ${msg.sender === "user" ? "justify-end" : ""}`}>
-                      {msg.sender === "ai" && (
-                        <Avatar className="w-9 h-9">
-                          <AvatarFallback><Bot /></AvatarFallback>
-                        </Avatar>
-                      )}
-                      <div className={`max-w-xl rounded-lg px-4 py-3 ${
-                          msg.sender === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
-                        }`}
-                      >
-                        {msg.sender === "user" ? (
-                          <p>{msg.content}</p>
-                        ) : (
-                          <div className="space-y-4">
-                            <p className="whitespace-pre-wrap">{msg.response?.answer}</p>
-                            {msg.response?.key_takeaways && msg.response.key_takeaways.length > 0 && (
-                              <div>
-                                <h4 className="font-semibold mb-2 flex items-center"><Lightbulb className="mr-2 h-4 w-4 text-yellow-500" />Key Takeaways</h4>
-                                <ul className="space-y-1 list-disc list-inside text-sm">
-                                  {msg.response.key_takeaways.map((item, i) => <li key={i}>{item}</li>)}
-                                </ul>
-                              </div>
-                            )}
-                            {msg.response?.references && msg.response.references.length > 0 && (
-                              <div>
-                                <h4 className="font-semibold mb-2 flex items-center"><FileText className="mr-2 h-4 w-4 text-blue-500" />References</h4>
-                                <div className="space-y-2 text-sm">
-                                  {msg.response.references.map((ref, i) => (
-                                    <a
-                                      key={i}
-                                      href={ref.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-2 p-2 rounded-md hover:bg-muted-foreground/10"
-                                    >
-                                      <LinkIcon className="h-4 w-4 flex-shrink-0" />
-                                      <span className="font-medium text-primary underline-offset-4 hover:underline">{ref.title}</span>
-                                    </a>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {msg.sender === "user" && (
-                         <Avatar className="w-9 h-9">
-                          <AvatarFallback><User /></AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                  ))}
-                  {isTyping && (
-                    <div className="flex items-start gap-4">
-                      <Avatar className="w-9 h-9">
-                        <AvatarFallback><Bot /></AvatarFallback>
-                      </Avatar>
-                      <div className="bg-muted rounded-lg px-4 py-3">
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-              <div className="p-4 border-t">
-                <div className="flex gap-2">
+            <CardContent>
+              <div className="flex flex-col md:flex-row w-full items-stretch md:items-center space-y-2 md:space-y-0 md:space-x-2">
                   <Input
-                    placeholder="Ask a follow-up question..."
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !isTyping) {
-                        handleSendMessage();
-                      }
-                    }}
-                    disabled={isTyping}
+                    type="text"
+                    placeholder="e.g., Research on COVID-19 in 2020"
+                    value={projectIdea}
+                    onChange={(e) => setProjectIdea(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleFindTools()}
+                    disabled={isFindingTools}
+                    className="text-base md:text-lg p-4 md:p-6 flex-1 min-w-0"
                   />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={isTyping || !inputMessage.trim()}
+                  <Button 
+                    size="lg" 
+                    onClick={handleFindTools} 
+                    disabled={isFindingTools}
+                    className="w-full md:w-auto"
                   >
-                    <Send className="w-4 h-4" />
+                    {isFindingTools ? (
+                        <Loader2 className="mr-2 h-4 w-4 md:h-5 md:w-5 animate-spin" />
+                    ) : (
+                        <Search className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                    )}
+                    Find Tools
                   </Button>
-                </div>
               </div>
+              
+              {isFindingTools && (
+                <div className="text-center p-8 md:p-12">
+                    <Loader2 className="h-8 w-8 md:h-12 md:w-12 animate-spin text-primary mx-auto" />
+                    <p className="mt-4 text-muted-foreground text-sm md:text-base">Analyzing your idea and finding the best resources...</p>
+                </div>
+              )}
+
+              {toolSuggestion && <ToolDisplay suggestion={toolSuggestion} />}
+
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Roadmap Tab */}
         <TabsContent value="roadmap">
-          <Card>
+          <Card className="w-full">
             <CardHeader>
-              <CardTitle className="flex items-center"><Target className="mr-2" /> Research Roadmap Generator</CardTitle>
-              <CardDescription>
-                Enter a topic to generate a structured, step-by-step research plan from foundational concepts to advanced execution.
-              </CardDescription>
+              <CardTitle className="flex items-center text-xl md:text-2xl"><Target className="mr-3 h-5 w-5 md:h-6 md:w-6 flex-shrink-0" /> Research Roadmap Generator</CardTitle>
+              <CardDescription className="text-sm md:text-base">Create a personalized learning path for any research topic.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="topic">Research Topic</Label>
-                  <Input
-                    id="topic"
-                    placeholder="e.g., 'Quantum Machine Learning for Drug Discovery'"
-                    value={roadmapData.topic}
-                    onChange={(e) => setRoadmapData({ ...roadmapData, topic: e.target.value })}
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="timeline">Timeline</Label>
-                    <Select
-                      value={roadmapData.timeline}
-                      onValueChange={(value) => setRoadmapData({ ...roadmapData, timeline: value })}
-                    >
-                      <SelectTrigger id="timeline">
-                        <SelectValue placeholder="Select timeline" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1-2 Weeks">1-2 Weeks</SelectItem>
-                        <SelectItem value="1 Month">1 Month</SelectItem>
-                        <SelectItem value="3-6 Months">3-6 Months</SelectItem>
-                        <SelectItem value="1 Year">1 Year</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="detail-level">Level of Detail</Label>
-                    <Select
-                      value={roadmapData.detail_level}
-                      onValueChange={(value) => setRoadmapData({ ...roadmapData, detail_level: value })}
-                    >
-                      <SelectTrigger id="detail-level">
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Beginner">Beginner</SelectItem>
-                        <SelectItem value="Intermediate">Intermediate</SelectItem>
-                        <SelectItem value="Advanced">Advanced</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="expertise">Your Current Expertise</Label>
+              <div className="grid gap-4">
+                <div className="flex flex-col lg:flex-row gap-4">
+                  <div className="flex-1 grid gap-2">
+                    <Label className="text-sm md:text-base">Research Topic</Label>
                     <Input
-                      id="expertise"
-                      placeholder="e.g., 'I am a software developer with no quantum physics background.'"
-                      value={roadmapData.user_expertise}
-                      onChange={(e) => setRoadmapData({ ...roadmapData, user_expertise: e.target.value })}
+                      placeholder="e.g., Machine Learning, Quantum Computing..."
+                      value={roadmapData.topic}
+                      onChange={(e) => setRoadmapData(prev => ({ ...prev, topic: e.target.value }))}
+                      className="text-base md:text-lg p-3 md:p-4"
                     />
                   </div>
+                  <div className="flex-1 grid gap-2">
+                    <Label className="text-sm md:text-base">Skill Level</Label>
+                    <ToggleGroup
+                      type="single"
+                      value={skillLevel}
+                      onValueChange={(value) => {
+                        if (value) setSkillLevel(value)
+                      }}
+                      className="grid grid-cols-3 gap-2"
+                    >
+                      <ToggleGroupItem value="Beginner" aria-label="Select Beginner" className="text-xs md:text-sm">
+                        Beginner
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="Intermediate" aria-label="Select Intermediate" className="text-xs md:text-sm">
+                        Intermediate
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="Advanced" aria-label="Select Advanced" className="text-xs md:text-sm">
+                        Advanced
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
                 </div>
-                <div>
-                  <Button onClick={handleGenerateRoadmap} disabled={isGeneratingRoadmap} className="w-full md:w-auto">
-                    {isGeneratingRoadmap && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isGeneratingRoadmap ? "Generating..." : "Generate Roadmap"}
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleGenerateRoadmap}
+                  disabled={isGeneratingRoadmap || !roadmapData.topic.trim()}
+                  className="mt-2 w-full md:w-auto"
+                >
+                  {isGeneratingRoadmap ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    "Generate Roadmap"
+                  )}
+                </Button>
               </div>
+              {roadmap && <RoadmapDisplay roadmap={roadmap} />}
             </CardContent>
           </Card>
-          {isGeneratingRoadmap && (
-            <div className="text-center p-8 flex items-center justify-center">
-              <Loader2 className="mr-2 h-8 w-8 animate-spin text-primary" />
-              <span className="text-lg text-muted-foreground">Generating your personalized roadmap...</span>
-            </div>
-          )}
-          {!isGeneratingRoadmap && !roadmap && (
-            <Card className="mt-6 text-center p-8 flex flex-col items-center justify-center h-64">
-               <Target className="h-12 w-12 text-muted-foreground/30 mb-4" />
-              <h3 className="text-lg font-semibold text-muted-foreground">Your Roadmap Will Appear Here</h3>
-              <p className="text-sm text-muted-foreground">Click "Generate Roadmap" to get started.</p>
-            </Card>
-          )}
-          <RoadmapDisplay roadmap={roadmap} />
         </TabsContent>
       </Tabs>
     </div>

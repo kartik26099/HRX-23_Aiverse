@@ -1,12 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-import traceback
+import logging
+from tool_finder import suggest_tools
+from roadmap_generator import generate_roadmap
 
-# Import core logic from your scripts
-# (Assuming they are refactored to be importable)
-from research_supporter import get_chat_response
-from roadmap_generator import generate_roadmap_logic
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialize Flask app and enable CORS
 app = Flask(__name__)
@@ -17,58 +18,46 @@ CORS(app, origins=[
     "http://127.0.0.1:3000"   # Keep for backward compatibility
 ])
 
-# Test route
-@app.route('/test', methods=['GET'])
-def test():
-    return jsonify({"message": "AI Research Helper server is running!"}), 200
-
-# Chat endpoint
-@app.route('/chat', methods=['POST'])
-def handle_chat():
+@app.route('/api/suggest-tools', methods=['POST'])
+def suggest_tools_endpoint():
+    """Endpoint for the Tool Finder functionality"""
     try:
         data = request.get_json()
-        if not data or 'query' not in data:
-            return jsonify({"error": "Missing 'query' in request body"}), 400
+        project_idea = data.get('project_idea')
         
-        query = data['query']
-        history = data.get('history', []) # History is optional
-        
-        # Get response from the research supporter logic
-        response_data = get_chat_response(query, history)
-        
-        return jsonify(response_data), 200
+        if not project_idea:
+            return jsonify({"error": "Project idea is required"}), 400
+            
+        result = suggest_tools(project_idea)
+        return jsonify(result)
         
     except Exception as e:
-        print(f"Error in /chat endpoint: {str(e)}")
-        traceback.print_exc()
-        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
+        logger.error(f"Error in suggest-tools endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
-# Roadmap endpoint
-@app.route('/generate-roadmap', methods=['POST'])
-def handle_roadmap():
+@app.route('/api/generate-roadmap', methods=['POST'])
+def generate_roadmap_endpoint():
+    """Endpoint for the roadmap generator functionality"""
     try:
         data = request.get_json()
-        required_fields = ['topic', 'detail_level', 'timeline', 'user_expertise']
-        if not all(field in data for field in required_fields):
-            missing = [field for field in required_fields if field not in data]
-            return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
-
-        # Get roadmap from the generator logic
-        roadmap_data = generate_roadmap_logic(
-            data['topic'],
-            data['detail_level'],
-            data['timeline'],
-            data['user_expertise']
-        )
+        topic = data.get('topic')
+        skill_level = data.get('skill_level', 'beginner')
         
-        return jsonify(roadmap_data)
-
+        if not topic:
+            return jsonify({"error": "Topic is required"}), 400
+            
+        roadmap = generate_roadmap(topic, skill_level)
+        return jsonify(roadmap)
+        
     except Exception as e:
-        print(f"Error in /generate-roadmap endpoint: {str(e)}")
-        traceback.print_exc()
-        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
+        logger.error(f"Error in generate-roadmap endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint"""
+    return jsonify({"status": "healthy"}), 200
 
 if __name__ == '__main__':
-    # Use a different port to avoid conflicts, e.g., 5005
-    port = int(os.environ.get("PORT", 5005))
-    app.run(host='0.0.0.0', port=port, debug=True) 
+    port = int(os.environ.get("PORT", 5003))
+    app.run(host='0.0.0.0', port=port, debug=True)

@@ -9,4 +9,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true
   }
-}); 
+});
+
+// Service role client for admin operations (bypasses RLS)
+export const supabaseAdmin = null; 

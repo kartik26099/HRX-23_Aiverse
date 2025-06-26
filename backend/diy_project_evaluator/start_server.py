@@ -12,7 +12,8 @@ load_dotenv()
 
 if __name__ == "__main__":
     # Get port from environment or use default
-    port = int(os.getenv("PORT", 8000))
+    port = int(os.getenv("PORT", 4006))
+    print(f"[ROCKET] DIY Project Evaluator Service starting on port {port}...")
     
     # Run the server
     uvicorn.run(

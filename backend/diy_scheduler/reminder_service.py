@@ -74,17 +74,18 @@ class AIReminderService:
         
         # Handle different phone number formats
         if len(digits_only) == 10:
-            # US number without country code
-            return f"+1{digits_only}"
+            # Check if it's an Indian number (starts with 6, 7, 8, 9)
+            if digits_only.startswith(('6', '7', '8', '9')):
+                return f"+91{digits_only}"
+            else:
+                # US number without country code
+                return f"+1{digits_only}"
         elif len(digits_only) == 11 and digits_only.startswith('1'):
             # US number with country code
             return f"+{digits_only}"
         elif len(digits_only) == 12 and digits_only.startswith('91'):
             # Indian number with country code
             return f"+{digits_only}"
-        elif len(digits_only) == 10 and digits_only.startswith(('6', '7', '8', '9')):
-            # Indian number without country code
-            return f"+91{digits_only}"
         elif len(digits_only) >= 10 and len(digits_only) <= 15:
             # Other international numbers
             if not digits_only.startswith('+'):
@@ -170,7 +171,7 @@ class AIReminderService:
         """Get time-based context for reminder generation"""
         if 6 <= hour < 12:
             return "morning"
-        elif 12 <= hour < 17:
+        elif 12 <= hour < 18:
             return "afternoon"
         elif 17 <= hour < 21:
             return "evening"
@@ -197,13 +198,13 @@ class AIReminderService:
         task_title = task['title'][:30]  # Limit title length
         
         if time_context == "morning":
-            return f"🌅 Good morning! Time to tackle: {task_title} ({task['category']})"
+            return f"[SUNRISE] Good morning! Time to tackle: {task_title} ({task['category']})"
         elif time_context == "afternoon":
-            return f"☀️ Afternoon energy! Ready for: {task_title} ({task['category']})"
+            return f"[SUN] Afternoon energy! Ready for: {task_title} ({task['category']})"
         elif time_context == "evening":
-            return f"🌆 Evening focus time: {task_title} ({task['category']})"
+            return f"[SUNSET] Evening focus time: {task_title} ({task['category']})"
         else:
-            return f"⏰ Task reminder: {task_title} ({task['category']})"
+            return f"[NIGHT] Night owl mode: {task_title} ({task['category']})"
     
     def schedule_reminder(self, task, user_phone, scheduled_time, reminder_timing=15):
         """Schedule a reminder for a task"""
@@ -255,26 +256,40 @@ class AIReminderService:
             
             if not self.twilio_client:
                 print("⚠️ Twilio not configured. Simulating SMS send.")
-                print(f"📱 Would send to {user_phone}: {message}")
+                print(f"[SMS] Would send to {user_phone}: {message}")
                 self.update_reminder_status(reminder_id, 'sent', 'simulated')
                 return True
             
             # Send SMS via Twilio
-            message_sid = self.twilio_client.messages.create(
-                body=message,
-                from_=self.twilio_number,
-                to=user_phone
-            )
-            
-            # Update reminder status
-            self.update_reminder_status(reminder_id, 'sent', message_sid.sid)
-            print(f"✅ SMS sent successfully: {message}")
-            return True
-            
-        except TwilioException as e:
-            print(f"❌ Twilio error: {e}")
-            self.update_reminder_status(reminder_id, 'failed', str(e))
-            return False
+            try:
+                message_sid = self.twilio_client.messages.create(
+                    body=message,
+                    from_=self.twilio_number,
+                    to=user_phone
+                )
+                
+                # Update reminder status
+                self.update_reminder_status(reminder_id, 'sent', message_sid.sid)
+                print(f"✅ SMS sent successfully: {message}")
+                return True
+                
+            except TwilioException as e:
+                error_msg = str(e)
+                print(f"❌ Twilio error: {error_msg}")
+                
+                # Check if it's an unverified number error
+                if "unverified" in error_msg.lower():
+                    print(f"⚠️ Phone number {user_phone} is not verified in Twilio trial account")
+                    print(f"💡 To fix this: Verify the number at https://console.twilio.com/ or upgrade to paid account")
+                    
+                    # For unverified numbers, simulate the send but mark as failed
+                    print(f"[SIMULATED SMS] Would send to {user_phone}: {message}")
+                    self.update_reminder_status(reminder_id, 'failed', 'unverified_number')
+                    return False
+                else:
+                    self.update_reminder_status(reminder_id, 'failed', error_msg)
+                    return False
+                    
         except Exception as e:
             print(f"❌ Error sending SMS: {e}")
             self.update_reminder_status(reminder_id, 'failed', str(e))
@@ -327,7 +342,7 @@ class AIReminderService:
         # Start scheduler in background thread
         scheduler_thread = threading.Thread(target=scheduler_loop, daemon=True)
         scheduler_thread.start()
-        print("🕐 Reminder scheduler started")
+        print("[CLOCK] Reminder scheduler started")
     
     def get_user_preferences(self, user_phone):
         """Get user reminder preferences"""

@@ -312,8 +312,6 @@ def cache_stats():
     })
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 4001))
-    print(f"Starting AI Library server on port {port}")
-    print(f"API Configuration: {API_CONFIG['scrapingdog']['api_key'] is not None}")
-    print(f"Fallback enabled: {API_CONFIG['fallback']['enabled']}")
+    port = int(os.getenv('PORT', 4004))  # Use PORT env var or default to 4004
+    print(f"[ROCKET] AI Library Service starting on port {port}...")
     app.run(host='0.0.0.0', port=port, debug=True)

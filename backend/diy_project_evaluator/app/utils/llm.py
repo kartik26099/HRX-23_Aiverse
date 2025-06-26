@@ -21,7 +21,7 @@ print(f"MODEL_NAME: {MODEL_NAME}")
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json",
-    "HTTP-Referer": "http://localhost:8000",
+    "HTTP-Referer": "http://localhost:4006",
     "X-Title": "DIY Project Evaluator"
 }
 

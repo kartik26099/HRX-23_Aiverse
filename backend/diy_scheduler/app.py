@@ -564,7 +564,7 @@ def test_reminder_endpoint():
     try:
         data = request.get_json()
         user_phone = data.get('user_phone')
-        test_message = data.get('message', '🧪 Test reminder from DIY Scheduler!')
+        test_message = data.get('message', '[TEST] Test reminder from DIY Scheduler!')
         
         if not user_phone:
             return jsonify({"error": "User phone required"}), 400
@@ -593,11 +593,17 @@ def test_reminder_endpoint():
         )
         
         if reminder_id:
+            # Check if this is a trial account and provide helpful info
+            trial_warning = ""
+            if reminder_service.account_sid and "AC" in reminder_service.account_sid:
+                trial_warning = "\n\n⚠️ **TRIAL ACCOUNT NOTICE:** If you don't receive the SMS, your phone number may need to be verified in your Twilio console. Visit: https://console.twilio.com/phone-numbers/verified"
+            
             return jsonify({
                 "success": True,
-                "message": "Test reminder scheduled (will send in 1 minute)",
+                "message": f"Test reminder scheduled (will send in 1 minute){trial_warning}",
                 "reminder_id": reminder_id,
-                "formatted_phone": formatted_phone
+                "formatted_phone": formatted_phone,
+                "trial_account": True if reminder_service.account_sid and "AC" in reminder_service.account_sid else False
             })
         else:
             return jsonify({"error": "Failed to schedule test reminder"}), 500
@@ -635,14 +641,15 @@ def health_check():
     })
 
 if __name__ == '__main__':
-    print("🚀 DIY Scheduler starting on port 5002...")
-    print("📅 Extended hours: 6 AM to 5 AM (23 hours)")
-    print("😴 Sleep time: 10 PM to 6 AM (8 hours)")
-    print("🧠 AI-powered intelligent scheduling with multiple models")
-    print("⏰ Fixed time scheduling support")
-    print("📊 Enhanced conflict resolution with sleep consideration")
-    print("📱 AI-powered SMS reminders via Twilio")
-    print("🔗 Health check available at: http://localhost:5002/health")
-    print("⏰ Time slots endpoint: http://localhost:5002/get-time-slots")
-    print("📞 Reminder endpoints available at: http://localhost:5002/reminders/*")
-    app.run(port=5002, debug=True) 
+    port = int(os.getenv('PORT', 4008))  # Use PORT env var or default to 4008
+    print(f"[ROCKET] DIY Scheduler starting on port {port}...")
+    print("[CALENDAR] Extended hours: 6 AM to 5 AM (23 hours)")
+    print("[SLEEP] Sleep time: 10 PM to 6 AM (8 hours)")
+    print("[BRAIN] AI-powered intelligent scheduling with multiple models")
+    print("[CLOCK] Fixed time scheduling support")
+    print("[CHART] Enhanced conflict resolution with sleep consideration")
+    print("[SMS] AI-powered SMS reminders via Twilio")
+    print(f"[LINK] Health check available at: http://localhost:{port}/health")
+    print(f"[CLOCK] Time slots endpoint: http://localhost:{port}/get-time-slots")
+    print(f"[PHONE] Reminder endpoints available at: http://localhost:{port}/reminders/*")
+    app.run(port=port, debug=True) 

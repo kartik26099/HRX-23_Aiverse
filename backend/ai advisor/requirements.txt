@@ -9,6 +9,9 @@ httpx==0.28.1
 # Environment variable management
 python-dotenv==1.1.0
 
+# Data validation
+pydantic==2.10.4
+
 # Document processing
 python-docx==1.1.2
 PyPDF2==3.0.1
@@ -17,7 +20,4 @@ PyPDF2==3.0.1
 python-multipart==0.0.20
 
 # Logging and utilities
-colorama==0.4.6
-
-# Async support
-asyncio 
+colorama==0.4.6 

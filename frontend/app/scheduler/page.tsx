@@ -26,6 +26,21 @@ import { ErrorBoundary } from "@/components/error-boundary"
 import { useDialogState } from "@/hooks/use-dialog-state"
 import React from "react"
 
+// Client-only wrapper component to prevent hydration issues
+function ClientOnly({ children, fallback = null }: { children: React.ReactNode; fallback?: React.ReactNode }) {
+  const [hasMounted, setHasMounted] = useState(false)
+
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  if (!hasMounted) {
+    return <>{fallback}</>
+  }
+
+  return <>{children}</>
+}
+
 interface Task {
   id: string
   title: string
@@ -76,7 +91,7 @@ function SchedulerContent() {
     slots: []
   })
   const [sleepSlots, setSleepSlots] = useState<string[]>([])
-  const [userPhone, setUserPhone] = useState("")
+  const [userPhone, setUserPhone] = useState("+918830747512")
   const [reminderPreferences, setReminderPreferences] = useState({
     reminder_timing: 15,
     reminder_style: "motivational",
@@ -115,7 +130,7 @@ function SchedulerContent() {
   useEffect(() => {
     const fetchExtendedHours = async () => {
       try {
-        const response = await fetch("http://localhost:5002/get-time-slots")
+        const response = await fetch("http://localhost:4008/get-time-slots")
         if (response.ok) {
           const data = await response.json()
           setExtendedHours(data.extended_hours)
@@ -152,41 +167,6 @@ function SchedulerContent() {
 
     fetchExtendedHours()
   }, [])
-
-  // Clean up old specificTimes data structure
-  useEffect(() => {
-    const cleanedSpecificTimes: {[key: string]: {date: string, startTime: string, endTime: string}} = {}
-    
-    Object.keys(specificTimes).forEach(taskId => {
-      const timeData = specificTimes[taskId]
-      if (timeData) {
-        // Handle old structure (with 'time' property)
-        if (timeData.time && !timeData.startTime) {
-          const task = tasks.find(t => t.id === taskId)
-          if (task) {
-            const startHour = parseInt(timeData.time.split(':')[0])
-            const startMinute = parseInt(timeData.time.split(':')[1])
-            const endHour = (startHour + task.hours) % 24
-            const endTime = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`
-            
-            cleanedSpecificTimes[taskId] = {
-              date: timeData.date,
-              startTime: timeData.time,
-              endTime: endTime
-            }
-          }
-        } else if (timeData.startTime && timeData.endTime) {
-          // New structure - keep as is
-          cleanedSpecificTimes[taskId] = timeData
-        }
-      }
-    })
-    
-    // Only update if there were changes
-    if (Object.keys(cleanedSpecificTimes).length !== Object.keys(specificTimes).length) {
-      setSpecificTimes(cleanedSpecificTimes)
-    }
-  }, [tasks]) // Only run when tasks change
 
   const getWeekDates = (startDate: Date) => {
     const dates = []
@@ -335,7 +315,7 @@ function SchedulerContent() {
     }
 
     try {
-      const response = await fetch("http://localhost:5002/reminders/test", {
+      const response = await fetch("http://localhost:4008/reminders/test", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -385,7 +365,7 @@ function SchedulerContent() {
       
       console.log("DEBUG: Sending request body:", requestBody);
       
-      const response = await fetch("http://localhost:5002/generate-schedule", {
+      const response = await fetch("http://localhost:4008/generate-schedule", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -747,12 +727,15 @@ function SchedulerContent() {
               <div className="space-y-2">
                 <Label htmlFor="phone-number">Phone Number (E.164 Format)</Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="phone-number"
-                    placeholder="+1234567890 or +918830745678"
-                    value={userPhone}
-                    onChange={(e) => setUserPhone(e.target.value)}
-                  />
+                  <ClientOnly fallback={<div className="flex-1 h-10 bg-muted rounded-md animate-pulse" />}>
+                    <Input
+                      id="phone-number"
+                      placeholder="+91XXXXXXXXXX (10 digits after +91)"
+                      value={userPhone}
+                      onChange={(e) => setUserPhone(e.target.value)}
+                      suppressHydrationWarning={true}
+                    />
+                  </ClientOnly>
                   <Button
                     variant="outline"
                     size="icon"
@@ -764,19 +747,22 @@ function SchedulerContent() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Use E.164 format: +[country code][number]<br/>
-                  Examples: +1234567890 (US), +918830745678 (India)
+                  Default: +91 (India). Use E.164 format: +[country code][number]<br/>
+                  Examples: +918830745678 (India), +1234567890 (US)
                 </p>
               </div>
               
               <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="enable-reminders"
-                  checked={remindersEnabled}
-                  onChange={(e) => setRemindersEnabled(e.target.checked)}
-                  className="rounded"
-                />
+                <ClientOnly fallback={<div className="w-4 h-4 bg-muted rounded animate-pulse" />}>
+                  <input
+                    type="checkbox"
+                    id="enable-reminders"
+                    checked={remindersEnabled}
+                    onChange={(e) => setRemindersEnabled(e.target.checked)}
+                    className="rounded"
+                    suppressHydrationWarning={true}
+                  />
+                </ClientOnly>
                 <Label htmlFor="enable-reminders" className="text-sm">Enable SMS Reminders</Label>
               </div>
               
@@ -811,13 +797,16 @@ function SchedulerContent() {
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex items-center gap-2 mb-2">
-                <input
-                  type="checkbox"
-                  id="use-ai"
-                  checked={useAI}
-                  onChange={(e) => setUseAI(e.target.checked)}
-                  className="rounded"
-                />
+                <ClientOnly fallback={<div className="w-4 h-4 bg-muted rounded animate-pulse" />}>
+                  <input
+                    type="checkbox"
+                    id="use-ai"
+                    checked={useAI}
+                    onChange={(e) => setUseAI(e.target.checked)}
+                    className="rounded"
+                    suppressHydrationWarning={true}
+                  />
+                </ClientOnly>
                 <Label htmlFor="use-ai" className="text-sm">Use AI-Powered Scheduling</Label>
               </div>
               <Button onClick={generateSchedule} className="w-full" disabled={isLoading}>
@@ -953,10 +942,10 @@ function SchedulerContent() {
             <DialogHeader>
               <DialogTitle>Set Specific Time for Task</DialogTitle>
               <DialogDescription>
-                Choose a specific start time for "{selectedTaskForTime.title}" on {selectedTaskForTime.assigned_date}
+                Choose a specific start time for "{selectedTaskForTime?.title}" on {selectedTaskForTime?.assigned_date}
                 <br />
                 <span className="text-sm text-muted-foreground">
-                  Duration: {selectedTaskForTime.hours} hour{selectedTaskForTime.hours > 1 ? 's' : ''}
+                  Duration: {selectedTaskForTime?.hours} hour{selectedTaskForTime?.hours && selectedTaskForTime.hours > 1 ? 's' : ''}
                 </span>
               </DialogDescription>
             </DialogHeader>
@@ -964,8 +953,9 @@ function SchedulerContent() {
               <div className="space-y-2">
                 <Label>Start Time (Extended Hours: 6 AM - 5 AM)</Label>
                 <Select
-                  value={specificTimes[selectedTaskForTime.id]?.startTime || "06:00"}
+                  value={specificTimes[selectedTaskForTime?.id || '']?.startTime || "06:00"}
                   onValueChange={(value) => {
+                    if (!selectedTaskForTime) return
                     const task = selectedTaskForTime
                     const startHour = parseInt(value.split(':')[0])
                     const startMinute = parseInt(value.split(':')[1])
@@ -998,17 +988,17 @@ function SchedulerContent() {
                 </Select>
               </div>
               
-              {specificTimes[selectedTaskForTime.id]?.startTime && (
+              {specificTimes[selectedTaskForTime?.id || '']?.startTime && (
                 <div className="space-y-2">
                   <Label>End Time (Calculated)</Label>
                   <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-muted-foreground" />
                       <span className="font-medium">
-                        {formatTime(specificTimes[selectedTaskForTime.id]?.startTime || '')} - {formatTime(specificTimes[selectedTaskForTime.id]?.endTime || '')}
+                        {formatTime(specificTimes[selectedTaskForTime?.id || '']?.startTime || '')} - {formatTime(specificTimes[selectedTaskForTime?.id || '']?.endTime || '')}
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        ({selectedTaskForTime.hours} hour{selectedTaskForTime.hours > 1 ? 's' : ''})
+                        ({selectedTaskForTime?.hours} hour{selectedTaskForTime?.hours && selectedTaskForTime.hours > 1 ? 's' : ''})
                       </span>
                     </div>
                   </div>

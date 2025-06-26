@@ -30,8 +30,8 @@ CORS(app, origins=[
 ])
 
 # Configuration - Use environment variables for security
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', "AIzaSyDqavbfyVbns6G903xrJFMjNkP-2KzcQjY")
-SCRAPINGDOG_API_KEY = os.getenv('SCRAPINGDOG_API_KEY', "685a76e11d2914e60db6dd2c")
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', "AIzaSyCCXgQzeEa4sr3PO8X1Y9KsJjXwbdTnNLY")
+SCRAPINGDOG_API_KEY = os.getenv('SCRAPINGDOG_API_KEY', "685a76e11d2914e60db6dd2")  
 
 # GitHub API credentials
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', "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")
@@ -926,6 +926,11 @@ Generate 5-8 specific tools that are directly relevant to building this project.
         """
         
         logger.info(f"Generating specific tools for project: {project_idea}")
+        logger.info(f"User profile: Age={user_age}, Skills={len(user_skills)}, Previous Projects={len(user_previous_projects)}")
+        logger.info(f"Raw skills data: {user_skills_raw}")
+        logger.info(f"Raw projects data: {user_previous_projects_raw}")
+        logger.info(f"Processed skills: {user_skills}")
+        logger.info(f"Processed projects: {user_previous_projects}")
         response = model.generate_content(prompt)
         tools_text = response.text.strip()
         
@@ -940,7 +945,8 @@ Generate 5-8 specific tools that are directly relevant to building this project.
         return []
 
 def generate_project_task(topic, transcript_content, available_time, user_skill_level="beginner", 
-                         user_description="", youtube_videos=None, knowledge_assessment="", category="software"):
+                         user_description="", youtube_videos=None, knowledge_assessment="", category="software",
+                         user_profile=None):
     """Generate a complete project task with roadmap"""
     try:
         if not model:
@@ -952,17 +958,44 @@ def generate_project_task(topic, transcript_content, available_time, user_skill_
         # Distribute videos across phases
         phase_videos = distribute_videos_to_phases(youtube_videos, topic, user_skill_level) if youtube_videos else {}
         
+        # Extract user profile information
+        user_age = user_profile.get('age', 'Not specified') if user_profile else 'Not specified'
+        user_skills_raw = user_profile.get('skills', '') if user_profile else ''
+        user_previous_projects_raw = user_profile.get('previous_projects', '') if user_profile else []
+        user_education_level = user_profile.get('education_level', 'Not specified') if user_profile else 'Not specified'
+        user_domain_interest = user_profile.get('domain_interest', 'Not specified') if user_profile else 'Not specified'
+        
+        # Convert string data to arrays for proper processing
+        if isinstance(user_skills_raw, str):
+            user_skills = [skill.strip() for skill in user_skills_raw.split(',') if skill.strip()] if user_skills_raw else []
+        else:
+            user_skills = user_skills_raw if isinstance(user_skills_raw, list) else []
+            
+        if isinstance(user_previous_projects_raw, str):
+            user_previous_projects = [project.strip() for project in user_previous_projects_raw.split(',') if project.strip()] if user_previous_projects_raw else []
+        else:
+            user_previous_projects = user_previous_projects_raw if isinstance(user_previous_projects_raw, list) else []
+        
+        # Format user profile information for the prompt
+        skills_text = ', '.join(user_skills) if user_skills else 'None specified'
+        previous_projects_text = ', '.join(user_previous_projects) if user_previous_projects else 'None specified'
+        
         # Create a comprehensive prompt for project generation with emphasis on specific tools
         prompt = f"""
-You are an AI-powered DIY project mentor. Your task is to generate a personalized and engaging project idea and their roadmap for a learner based on their background, available time, and content they've recently learned. The goal is to help them build confidence through hands-on application by suggesting a creative, domain-specific project.
+You are an AI-powered DIY project mentor. Your task is to generate a personalized and engaging project idea and their roadmap for a learner based on their background, available time, and content they've recently learned. The goal is to help them build confidence through hands-on application by suggesting a creative, domain-specific project,assuming learner will learn required skills if he don't know that skills.
         
 INPUT TOPIC: {topic}
 PROJECT CATEGORY: {category}
 
 USER PROFILE:
+        - Age: {user_age}
+        - Education Level: {user_education_level}
+        - Domain of Interest: {user_domain_interest}
+        - Current Skills: {skills_text}
+        - Previous Projects: {previous_projects_text}
         - Skill Level: {user_skill_level}
         - Available Time: {available_time}
-- Learner Description: {user_description}
+        - Learner Description: {user_description}
         - Knowledge Assessment: {knowledge_assessment}
         
 CONTENT CONTEXT:
@@ -970,6 +1003,9 @@ CONTENT CONTEXT:
 
 YOUR TASK:
 Generate a personalized DIY project roadmap that fits the learner's profile. The roadmap should:
+- Consider the user's age and education level for appropriate complexity
+- Build upon their existing skills and previous projects
+- Align with their domain of interest when possible
 - Suggest a project in the {category} domain
 - Match the learner's skill level and available time
 - Scaffold learning with intelligent guidance and hints
@@ -1045,6 +1081,11 @@ REMEMBER: The TOOLS & MATERIALS section is CRITICAL. Provide SPECIFIC tools with
         """
         
         logger.info(f"Generating project with AI model for topic: {topic}")
+        logger.info(f"User profile: Age={user_age}, Skills={len(user_skills)}, Previous Projects={len(user_previous_projects)}")
+        logger.info(f"Raw skills data: {user_skills_raw}")
+        logger.info(f"Raw projects data: {user_previous_projects_raw}")
+        logger.info(f"Processed skills: {user_skills}")
+        logger.info(f"Processed projects: {user_previous_projects}")
         response = model.generate_content(prompt)
         project_text = response.text.strip()
         
@@ -1071,7 +1112,14 @@ REMEMBER: The TOOLS & MATERIALS section is CRITICAL. Provide SPECIFIC tools with
             'success_criteria': project_data.get('success_criteria', ''),
             'next_steps_and_extensions': project_data.get('next_steps_and_extensions', ''),
             'is_ml_project': is_ml,
-            'phase_videos': phase_videos
+            'phase_videos': phase_videos,
+            'user_profile_used': {
+                'age': user_age,
+                'education_level': user_education_level,
+                'domain_interest': user_domain_interest,
+                'skills_count': len(user_skills),
+                'previous_projects_count': len(user_previous_projects)
+            }
         })
         
         # Debug logging
@@ -2071,6 +2119,7 @@ def api_generate_roadmap():
         category = data.get('category', 'software')
         user_description = data.get('user_description', '')
         youtube_url = data.get('youtube_url', '')
+        user_profile = data.get('user_profile', {})  # New field for user profile data
         transcript_content = ""
 
         if not topic or not available_time:
@@ -2078,6 +2127,7 @@ def api_generate_roadmap():
 
         logger.info(f"Generating roadmap for topic: {topic}, category: {category}")
         logger.info(f"User description: {user_description[:50]}...")
+        logger.info(f"User profile provided: {bool(user_profile)}")
         
         # Assess knowledge level based on description
         assessed_skill_level, knowledge_assessment = assess_knowledge_level(user_description, skill_level)
@@ -2106,7 +2156,8 @@ def api_generate_roadmap():
             user_description=user_description,
             youtube_videos=all_videos,
             knowledge_assessment=knowledge_assessment,
-            category=category
+            category=category,
+            user_profile=user_profile  # Pass user profile data
         )
         
         if not project_data:
@@ -2268,4 +2319,6 @@ def api_info():
     })
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.getenv('PORT', 4009))  # Use PORT env var or default to 4009
+    print(f"[ROCKET] AI DIY Service starting on port {port}...")
+    app.run(host='0.0.0.0', port=port, debug=True)

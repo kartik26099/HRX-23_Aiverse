@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Mic, MicOff, Volume2, VolumeX, HelpCircle, Sparkles } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
-import { toast } from '@/hooks/use-toast'
+import { toast } from '@/components/ui/use-toast'
 
 interface SpeechNavigationProps {
   className?: string

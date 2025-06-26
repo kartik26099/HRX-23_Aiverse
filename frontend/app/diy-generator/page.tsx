@@ -11,8 +11,10 @@ import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Wrench, Clock, Calendar, CheckCircle, Target, Lightbulb, Package, ExternalLink, Play, AlertCircle, Brain, Database, Sparkles, Zap, ArrowRight, FileText, Users, BarChart3, Eye, Loader2, Check, Code, Cpu } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { Wrench, Clock, Calendar, CheckCircle, Target, Lightbulb, Package, ExternalLink, Play, AlertCircle, Brain, Database, Sparkles, Zap, ArrowRight, FileText, Users, BarChart3, Eye, Loader2, Check, Code, Cpu, Trophy } from "lucide-react"
+import { toast } from "sonner"
+import { useUser } from '@clerk/nextjs'
+import { supabase } from '@/lib/supabaseClient'
 
 interface ProjectRoadmap {
   title: string
@@ -101,6 +103,13 @@ interface ProjectRoadmap {
     description?: string
     error?: string
   }
+  userProfileUsed?: {
+    age: string | number
+    education_level: string
+    domain_interest: string
+    skills_count: number
+    previous_projects_count: number
+  } | null
 }
 
 interface ApiResponse {
@@ -172,6 +181,7 @@ interface ApiResponse {
 }
 
 export default function DIYGeneratorPage() {
+  const { user, isSignedIn } = useUser();
   const [formData, setFormData] = useState({
     topic: "",
     experienceLevel: [3],
@@ -182,6 +192,7 @@ export default function DIYGeneratorPage() {
   })
   const [roadmap, setRoadmap] = useState<ProjectRoadmap | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [projectSuggestions] = useState([
     "Build a Weather App",
@@ -195,6 +206,65 @@ export default function DIYGeneratorPage() {
     "Develop a Social Media Dashboard",
     "Build a Learning Management System"
   ])
+
+  // Function to fetch user profile data from Supabase
+  const fetchUserProfile = async () => {
+    if (!isSignedIn || !user) {
+      console.log('User not signed in, skipping profile fetch');
+      return null;
+    }
+
+    console.log('Attempting to fetch user profile for:', user.id);
+    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log('Supabase Anon Key exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+    try {
+      // Test 1: Check if we can access any data from the table
+      console.log('Test 1: Checking basic table access...');
+      const { data: allData, error: allError } = await supabase
+        .from('userinfo')
+        .select('*')
+        .limit(1);
+
+      if (allError) {
+        console.error('Test 1 failed - cannot access table at all:', allError);
+        return null;
+      }
+      console.log('Test 1 passed - can access table, found', allData?.length || 0, 'rows');
+
+      // Test 2: Check if we can find the specific user
+      console.log('Test 2: Looking for user with clerk_id:', user.id);
+      const { data, error } = await supabase
+        .from('userinfo')
+        .select('*')
+        .eq('clerk_id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Test 2 failed - user not found:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        
+        // If it's a "no rows returned" error, the user doesn't have a profile yet
+        if (error.code === 'PGRST116' && error.message?.includes('0 rows')) {
+          console.log('User profile not found - user may not have created a profile yet');
+          return null;
+        }
+        
+        return null;
+      }
+
+      console.log('Test 2 passed - successfully fetched user profile:', data);
+      return data;
+    } catch (error) {
+      console.error('Exception in fetchUserProfile:', error);
+      return null;
+    }
+  };
 
   // Category-based project suggestions
   const getCategorySuggestions = (category: string) => {
@@ -224,16 +294,12 @@ export default function DIYGeneratorPage() {
     return suggestions[category as keyof typeof suggestions] || suggestions.software
   }
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"
-
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4009"
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.topic.trim() || !formData.availableHours) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in the project topic and available hours.",
-        variant: "destructive",
-      })
+      toast.error("Please fill in the project topic and available hours.")
       return
     }
 
@@ -241,6 +307,18 @@ export default function DIYGeneratorPage() {
     setError(null)
 
     try {
+      // Fetch user profile data if user is signed in
+      let userProfile = null;
+      if (isSignedIn && user) {
+        userProfile = await fetchUserProfile();
+        console.log('Fetched user profile:', userProfile);
+        
+        // If profile fetch failed, continue without it
+        if (!userProfile) {
+          console.log('Profile fetch failed, proceeding without profile data');
+        }
+      }
+
       const skillLevel = getExperienceLabel(formData.experienceLevel[0]).toLowerCase()
       const requestData = {
         topic: formData.topic,
@@ -249,7 +327,11 @@ export default function DIYGeneratorPage() {
         category: formData.category,
         user_description: formData.userDescription,
         youtube_url: formData.youtubeUrl || "",
+        user_profile: userProfile || {}, // Include user profile data (empty object if not available)
       }
+      
+      console.log('Sending request with user profile:', userProfile);
+      
       const response = await fetch(`${BACKEND_URL}/api/generate-roadmap`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -285,12 +367,14 @@ export default function DIYGeneratorPage() {
         hardwareSuggestions: data.hardware_suggestions || undefined,
         softwareTools: data.software_tools || undefined,
         flowchart: data.flowchart || undefined,
+        userProfileUsed: data.project_data?.user_profile_used || null,
       }
       
       // Debug: Log the tools and materials data
       console.log('Raw tools_and_materials:', data.project_data?.tools_and_materials)
       console.log('Parsed tools:', transformedRoadmap.tools)
       console.log('Full project data:', data.project_data)
+      console.log('User profile used:', data.project_data?.user_profile_used)
 
       setRoadmap(transformedRoadmap)
       
@@ -313,18 +397,11 @@ export default function DIYGeneratorPage() {
         // Don't fail the entire request if flowchart generation fails
       }
       
-      toast({
-        title: "Roadmap Generated!",
-        description: "Your personalized project roadmap has been created successfully.",
-      })
+      toast.success("Your personalized project roadmap has been created successfully.")
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred'
       setError(errorMessage)
-      toast({
-        title: "Generation Failed",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      toast.error(errorMessage)
     } finally {
       setIsGenerating(false)
     }
@@ -389,19 +466,12 @@ export default function DIYGeneratorPage() {
     try {
       const response = await fetch(`${BACKEND_URL}/api/health`)
       if (response.ok) {
-        toast({
-          title: "Backend Connected",
-          description: "Successfully connected to the backend server.",
-        })
+        toast.success("Successfully connected to the backend server.")
       } else {
         throw new Error(`HTTP ${response.status}`)
       }
     } catch (error) {
-      toast({
-        title: "Backend Connection Failed",
-        description: "Could not connect to the backend server.",
-        variant: "destructive",
-      })
+      toast.error("Could not connect to the backend server.")
     }
   }
 
@@ -540,6 +610,62 @@ export default function DIYGeneratorPage() {
     return tools
   }
 
+  // Handle project completion
+  const handleProjectComplete = async () => {
+    console.log('=== PROJECT COMPLETE BUTTON CLICKED ===');
+    console.log('isSignedIn:', isSignedIn);
+    console.log('roadmap exists:', !!roadmap);
+    
+    if (!isSignedIn) {
+      toast.error('Please sign in to mark projects as complete');
+      return;
+    }
+
+    if (!roadmap) {
+      toast.error('No project to complete');
+      return;
+    }
+
+    setIsCompleting(true);
+    try {
+      console.log('Starting project completion...');
+      
+      const response = await fetch('/api/project-complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectData: roadmap,
+        }),
+      });
+
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        throw new Error(`API Error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Project completion response:', data);
+
+      if (data.success) {
+        toast.success(`🎉 Project completed! Skills added: ${data.extractedSkills || 'Various skills'}`);
+        // Optionally redirect to profile page to see updated skills
+        // window.location.href = '/profile';
+      } else {
+        toast.error(data.error || 'Failed to complete project');
+      }
+    } catch (error) {
+      console.error('Error completing project:', error);
+      toast.error(`Failed to complete project: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -568,6 +694,38 @@ export default function DIYGeneratorPage() {
                 <CardDescription className="text-slate-600 dark:text-slate-400">
                   Tell us about your project idea and we'll create a personalized roadmap for you.
                 </CardDescription>
+                
+                {/* User Profile Indicator */}
+                {isSignedIn && (
+                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                        Personalized with your profile data
+                      </span>
+                    </div>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Your age, skills, education level, and previous projects will be considered for better project recommendations.
+                    </p>
+                    <p className="text-xs text-blue-500 dark:text-blue-300 mt-2">
+                      💡 Having issues? Make sure you've created a profile in the Profile section first.
+                    </p>
+                  </div>
+                )}
+                
+                {!isSignedIn && (
+                  <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                        Sign in for personalized recommendations
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      Create a profile to get project recommendations tailored to your skills and experience.
+                    </p>
+                  </div>
+                )}
               </CardHeader>
               
               <CardContent className="p-6">
@@ -907,6 +1065,47 @@ export default function DIYGeneratorPage() {
                     </div>
                   )}
 
+                  {/* User Profile Usage Indicator */}
+                  {roadmap.userProfileUsed && (
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-6 border border-emerald-200 dark:border-emerald-800">
+                      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                        <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                          <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <span>Personalization Applied</span>
+                      </h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+                            {roadmap.userProfileUsed.age}
+                          </div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Age</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+                            {roadmap.userProfileUsed.education_level}
+                          </div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Education</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+                            {roadmap.userProfileUsed.skills_count}
+                          </div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Skills</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+                            {roadmap.userProfileUsed.previous_projects_count}
+                          </div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Previous Projects</div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-3 text-center">
+                        This project was personalized based on your profile data for better recommendations.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Project Stats Grid - Enhanced */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Domain */}
@@ -1156,32 +1355,44 @@ export default function DIYGeneratorPage() {
                                       <span>Learning Videos</span>
                                     </h4>
                                   <div className="grid grid-cols-1 gap-3">
-                                      {day.videos.map((video, videoIndex) => (
+                                    {day.videos.map((video, videoIndex) => {
+                                      // Ensure video is an object with required properties
+                                      if (!video || typeof video !== 'object') {
+                                        return null;
+                                      }
+                                      
+                                      const videoTitle = video.title || video.name || 'Untitled Video';
+                                      const videoChannel = video.channel || video.author || 'Unknown Channel';
+                                      const videoLink = video.link || video.url || '#';
+                                      const videoViews = video.views || '';
+                                      const videoPublishedDate = video.published_date || video.publishedDate || '';
+                                      
+                                      return (
                                       <Card key={videoIndex} className="border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-colors bg-white dark:bg-slate-700">
                                         <CardContent className="p-3">
                                           <div className="space-y-2">
                                               <div className="flex items-start justify-between">
                                               <h5 className="text-sm font-medium text-slate-800 dark:text-slate-200 line-clamp-2">
-                                                  {video.title}
+                                                  {videoTitle}
                                                 </h5>
                                               </div>
                                               <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-400">
-                                                <span className="font-medium">{video.channel}</span>
-                                                {video.views && (
+                                                <span className="font-medium">{videoChannel}</span>
+                                                {videoViews && (
                                                   <>
                                                     <span>•</span>
-                                                    <span>{video.views}</span>
+                                                    <span>{videoViews}</span>
                                                   </>
                                                 )}
-                                                {video.published_date && (
+                                                {videoPublishedDate && (
                                                   <>
                                                     <span>•</span>
-                                                    <span>{video.published_date}</span>
+                                                    <span>{videoPublishedDate}</span>
                                                   </>
                                                 )}
                                               </div>
                                               <a
-                                                href={video.link}
+                                                href={videoLink}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="block w-full"
@@ -1198,7 +1409,8 @@ export default function DIYGeneratorPage() {
                                             </div>
                                           </CardContent>
                                         </Card>
-                                      ))}
+                                      );
+                                    })}
                                     </div>
                                   </div>
                                 )}
@@ -1666,6 +1878,54 @@ export default function DIYGeneratorPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Project Done Button */}
+            {roadmap && isSignedIn && (
+              <div className="mt-6 flex justify-center">
+                <Button
+                  onClick={handleProjectComplete}
+                  disabled={isCompleting}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-8 py-3 text-lg font-semibold shadow-lg"
+                >
+                  {isCompleting ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Trophy className="h-5 w-5 mr-2" />
+                      Project Done! 🎉
+                    </>
+                  )}
+                </Button>
+          </div>
+        )}
+
+            {/* Sign in prompt for non-authenticated users */}
+            {roadmap && !isSignedIn && (
+              <div className="mt-6 text-center">
+                <Card className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-center space-x-3 mb-4">
+                      <Trophy className="h-6 w-6 text-amber-600" />
+                      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                        Track Your Progress
+                      </h3>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-400 mb-4">
+                      Sign in to mark this project as complete and automatically add the skills you've learned to your profile!
+                    </p>
+                    <Button
+                      onClick={() => window.location.href = '/sign-in'}
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      Sign In to Track Progress
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         )}
       </div>

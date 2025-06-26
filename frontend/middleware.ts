@@ -1,7 +1,14 @@
 // middleware.ts
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, redirectToSignIn } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
-export default clerkMiddleware();
+export default clerkMiddleware((auth, req) => {
+  // Handle sign-in redirects
+  if (auth.userId && req.nextUrl.pathname === "/") {
+    // Redirect to profile page after successful sign-in
+    return NextResponse.redirect(new URL("/profile", req.url));
+  }
+});
 
 export const config = {
   matcher: [

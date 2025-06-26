@@ -11,16 +11,18 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 import { Progress } from "@/components/ui/progress"
 
 // API Base URL
-const API_BASE_URL = "http://localhost:8000"
+const API_BASE_URL = "http://localhost:4002"
 
 // Types
 interface Document {
   id: number
   title: string
+  chunk_count?: number
+  uploaded_at?: string
 }
 
 interface QuizQuestion {
@@ -42,7 +44,7 @@ interface QuizResult {
 interface ChatMessage {
   role: "user" | "assistant"
   content: string
-  sources?: string[]
+  sources?: Array<{document_title: string, document_id: string}>
 }
 
 export default function AIFacultyPage() {
@@ -52,6 +54,7 @@ export default function AIFacultyPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentDocument, setCurrentDocument] = useState<Document | null>(null)
+  const [availableDocuments, setAvailableDocuments] = useState<Document[]>([])
   const [quiz, setQuiz] = useState<QuizQuestion[]>([])
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({})
   const [quizResults, setQuizResults] = useState<QuizResult | null>(null)
@@ -98,6 +101,23 @@ export default function AIFacultyPage() {
     window.addEventListener('error', handleError)
     return () => window.removeEventListener('error', handleError)
   }, [])
+
+  // Load available documents on component mount
+  useEffect(() => {
+    loadAvailableDocuments()
+  }, [])
+
+  const loadAvailableDocuments = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/documents/detailed`)
+      if (response.ok) {
+        const documents = await response.json()
+        setAvailableDocuments(documents)
+      }
+    } catch (error) {
+      console.error("Failed to load documents:", error)
+    }
+  }
 
   // File upload handlers
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,6 +168,9 @@ export default function AIFacultyPage() {
         id: data.document_id,
         title: data.title
       })
+
+      // Refresh available documents after upload
+      await loadAvailableDocuments()
 
       toast({
         title: "Document Uploaded",
@@ -260,40 +283,58 @@ export default function AIFacultyPage() {
     }
   }
 
-  const handleChatSubmit = async () => {
+  const handleChatSubmit = async (e?: React.FormEvent) => {
+    // Prevent form submission from reloading the page
+    if (e) {
+      e.preventDefault()
+    }
+    
     if (!chatInput.trim()) return
 
-    const userMessage: ChatMessage = { role: "user", content: chatInput }
+    // Store the message before clearing the input
+    const messageToSend = chatInput.trim()
+    
+    console.log("Sending chat message:", messageToSend)
+    
+    const userMessage: ChatMessage = { role: "user", content: messageToSend }
     setChatMessages(prev => [...prev, userMessage])
     setChatInput("")
     setIsChatLoading(true)
 
     try {
+      console.log("Making API request to:", `${API_BASE_URL}/chat`)
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: chatInput,
+          message: messageToSend,
           conversation_history: chatMessages
         }),
       })
 
+      console.log("Response status:", response.status)
+
       if (!response.ok) {
-        throw new Error('Failed to get response')
+        const errorText = await response.text()
+        console.error("API Error:", errorText)
+        throw new Error(`Failed to get response: ${response.status} ${errorText}`)
       }
 
       const data = await response.json()
+      console.log("API Response:", data)
+      
       const assistantMessage: ChatMessage = {
         role: "assistant",
         content: data.response,
-        sources: data.sources
+        sources: data.sources || []
       }
       setChatMessages(prev => [...prev, assistantMessage])
 
     } catch (error) {
+      console.error("Chat error:", error)
       toast({
         title: "Chat Error",
-        description: "Failed to get response. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to get response. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -384,29 +425,42 @@ export default function AIFacultyPage() {
 
               {uploadedFile && (
                 <div className="mt-4 p-3 bg-muted rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    <span className="text-sm font-medium">{uploadedFile.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setUploadedFile(null)
-                        setCurrentDocument(null)
-                        setQuiz([])
-                        setQuizResults(null)
-                        setShowResults(false)
-                        setChatMessages([])
-                        setUserAnswers({})
-                        setError(null)
-                      }}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
+                  <div className="flex items-start gap-2">
+                    <FileText className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div 
+                          className="text-sm font-medium break-words flex-1 overflow-hidden"
+                          title={uploadedFile.name}
+                        >
+                          <div className="truncate">
+                            {uploadedFile.name}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setUploadedFile(null)
+                            setCurrentDocument(null)
+                            setQuiz([])
+                            setQuizResults(null)
+                            setShowResults(false)
+                            setChatMessages([])
+                            setUserAnswers({})
+                            setError(null)
+                          }}
+                          className="flex-shrink-0 ml-2"
+                          title="Remove document"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
                 </div>
               )}
 
@@ -474,7 +528,14 @@ export default function AIFacultyPage() {
                         </div>
                         <div>
                           <div className="text-xl font-bold">Knowledge Assessment</div>
-                          <div className="text-sm font-normal text-primary-foreground/80 mt-1">{currentDocument.title}</div>
+                          <div 
+                            className="text-sm font-normal text-primary-foreground/80 mt-1 overflow-hidden"
+                            title={currentDocument.title}
+                          >
+                            <div className="truncate">
+                              {currentDocument.title}
+                            </div>
+                          </div>
                         </div>
                       </CardTitle>
                       <CardDescription className="text-primary-foreground/80">
@@ -793,7 +854,9 @@ export default function AIFacultyPage() {
                       </div>
                       <div>
                         <div className="text-xl font-bold">AI Document Assistant</div>
-                        <div className="text-sm font-normal text-primary-foreground/80 mt-1">Ask questions about your uploaded documents</div>
+                        <div className="text-sm font-normal text-primary-foreground/80 mt-1">
+                          Ask questions about your uploaded documents
+                        </div>
                       </div>
                     </CardTitle>
                     <CardDescription className="text-primary-foreground/80">
@@ -801,9 +864,48 @@ export default function AIFacultyPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-6">
+                    {/* Document Context */}
+                    {availableDocuments.length > 0 && (
+                      <div className="mb-4 p-4 bg-muted/50 rounded-lg border border-border">
+                        <div className="flex items-center gap-2 mb-2">
+                          <HardDrive className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium text-muted-foreground">Available Documents:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {availableDocuments.map((doc) => (
+                            <Badge key={doc.id} variant="secondary" className="text-xs max-w-full">
+                              <span className="truncate block max-w-32" title={doc.title}>
+                                {doc.title}
+                              </span>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {availableDocuments.length === 0 && (
+                      <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className="h-4 w-4 text-yellow-600" />
+                          <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">No Documents Available</span>
+                        </div>
+                        <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                          Upload a document first to start chatting with the AI assistant about its content.
+                        </p>
+                      </div>
+                    )}
+                    
                     <div className="flex flex-col h-[70vh]">
                       <ScrollArea className="flex-1 pr-4 mb-4">
                         <div className="space-y-4">
+                          {chatMessages.length === 0 && (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                              <p className="text-lg font-medium">Start a conversation</p>
+                              <p className="text-sm">Ask questions about your uploaded documents</p>
+                            </div>
+                          )}
+                          
                           {chatMessages.map((message, index) => (
                             <div
                               key={index}
@@ -829,6 +931,20 @@ export default function AIFacultyPage() {
                                     <div className="text-sm leading-relaxed whitespace-pre-wrap">
                                       {message.content}
                                     </div>
+                                    {message.sources && message.sources.length > 0 && (
+                                      <div className="mt-3 pt-3 border-t border-border/50">
+                                        <div className="text-xs text-muted-foreground mb-1">Sources:</div>
+                                        <div className="flex flex-wrap gap-1">
+                                          {message.sources.map((source, idx) => (
+                                            <Badge key={idx} variant="outline" className="text-xs max-w-full">
+                                              <span className="truncate block max-w-24" title={source.document_title}>
+                                                {source.document_title}
+                                              </span>
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                   {message.role === 'user' && (
                                     <div className="p-2 bg-primary-foreground/10 rounded-lg flex-shrink-0">
@@ -863,13 +979,19 @@ export default function AIFacultyPage() {
                           <Input
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}
-                            placeholder="Ask a question about your document..."
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                handleChatSubmit()
+                              }
+                            }}
+                            placeholder={availableDocuments.length > 0 ? "Ask a question about your document..." : "Upload a document first to start chatting..."}
                             className="flex-1 bg-background border-border focus:border-primary"
-                            disabled={isChatLoading}
+                            disabled={isChatLoading || availableDocuments.length === 0}
                           />
                           <Button
                             type="submit"
-                            disabled={!chatInput.trim() || isChatLoading}
+                            disabled={!chatInput.trim() || isChatLoading || availableDocuments.length === 0}
                             className="bg-primary hover:bg-primary/90 text-primary-foreground px-6"
                           >
                             {isChatLoading ? (

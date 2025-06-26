@@ -48,16 +48,9 @@ def close_db(exception=None):
 def setup_database():
     # Create SQL tables
     Base.metadata.create_all(bind=engine)
-
-    # Delete all documents and related chunks at startup
-    db = SessionLocal()
-    try:
-        db.query(DocumentChunk).delete()
-        db.query(Document).delete()
-        db.commit()
-        print("All documents and chunks deleted at startup.")
-    finally:
-        db.close()
+    
+    # Don't delete documents on startup - let them persist
+    print("Database initialized. Documents will persist across restarts.")
 
 # Call setup_database with app context
 with app.app_context():
@@ -105,6 +98,26 @@ def get_documents():
     try:
         documents = db.query(Document).all()
         return jsonify([{"id": doc.id, "title": doc.title} for doc in documents])
+    finally:
+        db.close()
+
+# Get detailed document information endpoint
+@app.route('/documents/detailed', methods=['GET'])
+def get_documents_detailed():
+    db = get_db()
+    try:
+        documents = db.query(Document).all()
+        detailed_docs = []
+        for doc in documents:
+            # Count chunks for this document
+            chunk_count = db.query(DocumentChunk).filter(DocumentChunk.document_id == doc.id).count()
+            detailed_docs.append({
+                "id": doc.id,
+                "title": doc.title,
+                "chunk_count": chunk_count,
+                "uploaded_at": doc.created_at.isoformat() if hasattr(doc, 'created_at') else None
+            })
+        return jsonify(detailed_docs)
     finally:
         db.close()
 
@@ -280,6 +293,18 @@ def chat():
         if not user_message:
             return jsonify({"error": "Message is required"}), 400
         
+        # Check if there are any documents in the database
+        db = get_db()
+        try:
+            documents = db.query(Document).all()
+            if not documents:
+                return jsonify({
+                    "response": "I don't have any documents to reference. Please upload a document first so I can help you with questions about it.",
+                    "sources": []
+                })
+        finally:
+            db.close()
+        
         # Convert the list of dictionaries to ChatMessage objects
         if conversation_history:
             conversation_history = [ChatMessage(**msg) for msg in conversation_history]
@@ -315,6 +340,7 @@ def health_check():
     })
 
 if __name__ == '__main__':
-    print("Starting AI Faculty Backend on port 8000...")
-    print("Health check available at: http://localhost:8000/health")
-    app.run(debug=True, host='0.0.0.0', port=8000)
+    port = int(os.getenv('PORT', 4002))  # Use PORT env var or default to 4002
+    print(f"Starting AI Faculty Backend on port {port}...")
+    print(f"Health check available at: http://localhost:{port}/health")
+    app.run(debug=True, host='0.0.0.0', port=port)

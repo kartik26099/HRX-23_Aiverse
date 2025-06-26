@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "@/components/ui/use-toast"
 import {
   Bot,
   Target,
@@ -37,7 +37,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 
 // --- Constants ---
-const API_BASE_URL = "http://localhost:5003"
+const API_BASE_URL = "http://localhost:4003"
 
 // --- Type Definitions ---
 interface Tool {
@@ -246,8 +246,6 @@ const ToolDisplay = ({ suggestion }: { suggestion: ToolSuggestion }) => {
 
 // --- Main Component ---
 export default function ResearchHelperPage() {
-  const { toast } = useToast()
-
   // --- State Management ---
   const [projectIdea, setProjectIdea] = useState("")
   const [toolSuggestion, setToolSuggestion] = useState<ToolSuggestion | null>(null)
@@ -263,13 +261,20 @@ export default function ResearchHelperPage() {
   // --- API Handlers ---
   const handleFindTools = async () => {
     if (!projectIdea.trim()) {
-      toast({ title: "Project Idea Required", description: "Please enter a project idea to get suggestions.", variant: "destructive" })
+      toast({
+        title: "Error",
+        description: "Please enter a project idea to get suggestions.",
+        variant: "destructive",
+      })
       return
     }
 
     setIsFindingTools(true)
     setToolSuggestion(null)
-    toast({ title: "Finding Tools...", description: "Searching for the best resources for your project." })
+    toast({
+      title: "Searching",
+      description: "Searching for the best resources for your project.",
+    })
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/suggest-tools`, {
@@ -286,7 +291,10 @@ export default function ResearchHelperPage() {
       const data: ToolSuggestion = await response.json()
       if (data.success) {
         setToolSuggestion(data)
-        toast({ title: "Success!", description: "Tool suggestions have been loaded." })
+        toast({
+          title: "Success",
+          description: "Tool suggestions have been loaded.",
+        })
       } else {
         throw new Error((data as any).error || "An unknown error occurred in the backend.")
       }
@@ -294,7 +302,7 @@ export default function ResearchHelperPage() {
     } catch (error) {
       console.error("Tool suggestion error:", error)
       toast({
-        title: "Error Finding Tools",
+        title: "Error",
         description: error instanceof Error ? error.message : "An unknown error occurred.",
         variant: "destructive",
       })
@@ -305,13 +313,20 @@ export default function ResearchHelperPage() {
 
   const handleGenerateRoadmap = async () => {
     if (!roadmapData.topic.trim()) {
-      toast({ title: "Topic is required", description: "Please enter a research topic.", variant: "destructive" })
+      toast({
+        title: "Error",
+        description: "Please enter a research topic.",
+        variant: "destructive",
+      })
       return
     }
 
     setIsGeneratingRoadmap(true)
     setRoadmap(null)
-    toast({ title: "Generating Roadmap...", description: "Your personalized research plan is being created." })
+    toast({
+      title: "Generating",
+      description: "Your personalized research plan is being created.",
+    })
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/generate-roadmap`, {
@@ -327,12 +342,15 @@ export default function ResearchHelperPage() {
 
       const data: Roadmap = await response.json()
       setRoadmap(data)
-      toast({ title: "Success", description: "Your research roadmap has been generated." })
+      toast({
+        title: "Success",
+        description: "Your research roadmap has been generated.",
+      })
     } catch (error) {
       console.error("Roadmap generation error:", error)
       setRoadmap(null)
       toast({
-        title: "Roadmap Generation Failed",
+        title: "Error",
         description: error instanceof Error ? error.message : "An unknown error occurred.",
         variant: "destructive",
       })
@@ -368,7 +386,7 @@ export default function ResearchHelperPage() {
               <div className="flex flex-col md:flex-row w-full items-stretch md:items-center space-y-2 md:space-y-0 md:space-x-2">
                   <Input
                     type="text"
-                    placeholder="e.g., Research on COVID-19 in 2020"
+                    placeholder="Enter the topic you want to research"
                     value={projectIdea}
                     onChange={(e) => setProjectIdea(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleFindTools()}

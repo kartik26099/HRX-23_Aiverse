@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
+import useToast from "@/hooks/use-toast"
 import {
   Send,
   Bot,
@@ -34,7 +34,7 @@ import {
 } from "lucide-react"
 
 // --- Constants ---
-const API_BASE_URL = "http://localhost:5274/api"
+const API_BASE_URL = "http://localhost:4010/api"
 
 // --- Type Definitions ---
 interface Message {
@@ -55,7 +55,7 @@ interface Quiz {
 
 // --- Main Component ---
 export default function AIAdvisorPage() {
-  const { toast } = useToast()
+  const toast = useToast
 
   // --- State Management ---
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -115,11 +115,7 @@ export default function AIAdvisorPage() {
       setMessages((prev) => [...prev, { role: "assistant", content: data.response }])
       if (data.session_id) setSessionId(data.session_id)
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Could not connect to the AI Advisor. Please try again later.",
-        variant: "destructive",
-      })
+      toast.error("Could not connect to the AI Advisor. Please try again later.")
     } finally {
       setIsTyping(false)
     }
@@ -127,7 +123,7 @@ export default function AIAdvisorPage() {
 
   const handleGenerateQuiz = async () => {
     setIsTyping(true)
-    toast({ title: "Generating Quiz...", description: "Your quiz is being created based on our conversation." })
+    toast.info("Generating Quiz... Your quiz is being created based on our conversation.")
 
     try {
       const response = await fetch(`${API_BASE_URL}/generate-quiz`, {
@@ -151,11 +147,7 @@ export default function AIAdvisorPage() {
         throw new Error("Received an empty or invalid quiz from the server.")
       }
     } catch (error) {
-      toast({
-        title: "Quiz Generation Failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred.",
-        variant: "destructive",
-      })
+      toast.error(error instanceof Error ? error.message : "An unknown error occurred.")
     } finally {
       setIsTyping(false)
     }
@@ -170,10 +162,7 @@ export default function AIAdvisorPage() {
     })
     setScore(correctAnswers)
     setShowResults(true)
-    toast({
-      title: "Quiz Submitted!",
-      description: `You scored ${correctAnswers} out of ${quiz?.questions.length}!`,
-    })
+    toast.success(`You scored ${correctAnswers} out of ${quiz?.questions.length}!`)
   }
   
   const resetQuiz = () => {

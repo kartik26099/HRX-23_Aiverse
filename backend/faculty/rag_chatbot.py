@@ -266,24 +266,40 @@ async def chat_with_documents(message: str, conversation_history: List[ChatMessa
     """Chat with documents using RAG approach."""
     if conversation_history is None:
         conversation_history = []
+    
     # Analyze sentiment to adapt response tone
     sentiment = analyze_sentiment(message)
+    
+    # Get available documents for context
+    db = SessionLocal()
+    try:
+        documents = db.query(Document).all()
+        document_titles = [doc.title for doc in documents]
+        document_context = f"Available documents: {', '.join(document_titles)}" if document_titles else "No documents available"
+    finally:
+        db.close()
     
     # Generate improved query based on conversation history
     improved_query = generate_improved_query(message, conversation_history)
     print(f"Original query: {message}")
     print(f"Improved query: {improved_query}")
+    print(f"Document context: {document_context}")
     
     # Get relevant chunks using the improved query
     relevant_chunks = get_relevant_chunks(improved_query)
     
-    # Prepare system message with tone adaptation based on sentiment
-    system_message = """You are a helpful, conversational assistant that answers questions based on the provided document context.
-    Use natural language with occasional pauses and varied sentence structures.
-    If the context doesn't contain relevant information, express uncertainty naturally.
-    Be conversational yet precise, responding as a knowledgeable human would.
-    answer like a friendly college professor would answer if it was asked a doubt
-    """
+    # Prepare system message with tone adaptation based on sentiment and document context
+    system_message = f"""You are a knowledgeable AI faculty assistant with access to the following documents: {document_context}.
+
+Your role is to:
+1. Answer questions based ONLY on the content of the uploaded documents
+2. If a question cannot be answered from the documents, clearly state that you don't have that information
+3. Provide specific references to document content when possible
+4. Be conversational yet precise, responding as a knowledgeable professor would
+5. Use natural language with occasional pauses and varied sentence structures
+6. If you're unsure about something, express uncertainty naturally
+
+Remember: You can only answer questions about the content in the uploaded documents. If someone asks about topics not covered in the documents, politely explain that you don't have that information available."""
     
     # Adjust tone based on sentiment
     if sentiment < -0.3:
@@ -308,13 +324,15 @@ async def chat_with_documents(message: str, conversation_history: List[ChatMessa
         
         # Prepare prompt with context and chain-of-thought guidance
         prompt = f"""
-        Answer the following question based on this context:
+        Answer the following question based on this context from the uploaded documents:
         
         Context: {context}
         
         Question: {message}
         
-        Think through your response step by step
+        Important: Only answer based on the provided context. If the context doesn't contain relevant information, clearly state that you don't have that information in the uploaded documents.
+        
+        Think through your response step by step and provide specific references when possible.
         """
         
         # Prepare conversation history for the API

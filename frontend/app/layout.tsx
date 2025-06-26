@@ -8,6 +8,7 @@ import { Footer } from "@/components/footer"
 import SpeechNavigation from "@/components/speech-navigation"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { ReactErrorHandler, setupReactErrorHandling } from "@/components/react-error-handler"
+import { Toaster } from "sonner"
 import Script from "next/script"
 import {
   ClerkProvider,
@@ -351,6 +352,7 @@ export default function RootLayout({
                 <Footer />
                 <SpeechNavigation />
                 <ReactErrorHandler />
+                <Toaster position="top-right" richColors />
               </div>
             </ErrorBoundary>
           </ThemeProvider>

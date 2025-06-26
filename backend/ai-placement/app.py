@@ -362,4 +362,6 @@ def api_batch_process():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.getenv('PORT', 4005))  # Use PORT env var or default to 4005
+    print(f"[ROCKET] AI Placement Service starting on port {port}...")
+    app.run(host='0.0.0.0', port=port, debug=True)

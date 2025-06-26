@@ -11,6 +11,7 @@ from schemas import ChatMessage
 from advisor import career_advisor_response, generate_quiz_from_context
 from document_handler import process_document, get_document_segments_for_context
 from document_cache import document_cache
+from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -354,5 +355,17 @@ def get_document_metadata():
 def home():
     return {"message": "Career Advisor Chatbot API is running."}
 
+@app.route('/api/health', methods=['GET'])
+def health():
+    return jsonify({
+        "status": "healthy",
+        "service": "AI Advisor",
+        "timestamp": datetime.now().isoformat(),
+        "active_sessions": len(chat_sessions),
+        "port": int(os.getenv('PORT', 4010))
+    })
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5274, debug=True)
+    port = int(os.getenv('PORT', 4010))  # Use PORT env var or default to 4010
+    print(f"[ROCKET] AI Advisor Service starting on port {port}...")
+    app.run(host="0.0.0.0", port=port, debug=True)

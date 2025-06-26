@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Users, TrendingUp, MessageSquare, Heart, Sparkles, Globe, Award, Activity } from 'lucide-react';
+import { useSupabaseUser } from '@/hooks/use-supabase-user';
 
 interface Post {
   id: string;
@@ -43,6 +44,7 @@ interface ActiveUser {
 }
 
 export default function CommunityPage() {
+  const { supabaseUser, isSignedIn } = useSupabaseUser();
   const [posts, setPosts] = useState<Post[]>([]);
   const [trendingPosts, setTrendingPosts] = useState<TrendingPost[]>([]);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
@@ -113,12 +115,22 @@ export default function CommunityPage() {
   const handleReportSubmit = async (reason: string) => {
     if (!reportingPostId) return;
     
+    if (!isSignedIn) {
+      alert('Please sign in to report posts');
+      return;
+    }
+
+    if (!supabaseUser) {
+      alert('User profile not ready. Please try again.');
+      return;
+    }
+    
     try {
       const { error } = await supabase.from('reports').insert([
         {
           post_id: reportingPostId,
           reason,
-          // user_id will be set by RLS
+          user_id: supabaseUser.id,
         }
       ]);
       
@@ -131,12 +143,22 @@ export default function CommunityPage() {
   };
 
   const handleReaction = async (postId: string) => {
+    if (!isSignedIn) {
+      alert('Please sign in to react to posts');
+      return;
+    }
+
+    if (!supabaseUser) {
+      alert('User profile not ready. Please try again.');
+      return;
+    }
+
     try {
       const { error } = await supabase.from('reactions').insert([
         {
           post_id: postId,
           type: 'like',
-          // user_id will be set by RLS
+          user_id: supabaseUser.id,
         }
       ]);
       

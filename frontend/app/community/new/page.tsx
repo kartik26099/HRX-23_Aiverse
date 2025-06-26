@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabaseClient';
+import { SignInButton } from '@clerk/nextjs';
+import { useSupabaseUser } from '@/hooks/use-supabase-user';
 
 const POST_TYPES = [
   { label: 'Post', value: 'post' },
@@ -11,10 +13,9 @@ const POST_TYPES = [
   { label: 'Experience', value: 'experience' },
 ];
 
-const DUMMY_USER_ID = '00000000-0000-0000-0000-000000000000';
-
 export default function NewPostPage() {
   const router = useRouter();
+  const { supabaseUser, loading: userLoading, isSignedIn } = useSupabaseUser();
   const [content, setContent] = useState('');
   const [type, setType] = useState('post');
   const [tags, setTags] = useState('');
@@ -22,67 +23,29 @@ export default function NewPostPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Create dummy user for testing
-  useEffect(() => {
-    const createDummyUser = async () => {
-      try {
-        // First, test if we can connect to the database
-        console.log('Testing database connection...');
-        const { data: testData, error: testError } = await supabase
-          .from('posts')
-          .select('count')
-          .limit(1);
-        
-        if (testError) {
-          console.error('Database connection test failed:', testError);
-          setError(`Database connection failed: ${testError.message}`);
-          return;
-        }
-        
-        console.log('Database connection successful');
-        
-        // Check if dummy user exists
-        const { data: existingUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', DUMMY_USER_ID)
-          .single();
-
-        if (!existingUser) {
-          // Create dummy user
-          await supabase
-            .from('users')
-            .insert([
-              {
-                id: DUMMY_USER_ID,
-                clerk_id: 'dummy_clerk_id',
-                username: 'TestUser',
-              }
-            ]);
-          console.log('Dummy user created for testing');
-        }
-      } catch (error) {
-        console.log('Dummy user already exists or error creating:', error);
-      }
-    };
-
-    createDummyUser();
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isSignedIn) {
+      alert('Please sign in to create a post');
+      return;
+    }
+
+    if (!supabaseUser) {
+      alert('User profile not ready. Please try again.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     const tagList = tags.split(',').map((t) => t.trim()).filter(Boolean);
     
     try {
-      // For testing purposes, we'll create a post with a dummy user_id
-      // This bypasses the authentication requirement temporarily
       const postData = {
         content,
         type,
         is_anonymous: isAnonymous,
-        user_id: DUMMY_USER_ID, // Dummy UUID for testing
+        user_id: supabaseUser.id,
       };
       
       console.log('Attempting to create post with data:', postData);
@@ -146,6 +109,20 @@ export default function NewPostPage() {
     }
   };
 
+  if (!isSignedIn) {
+    return (
+      <div className="max-w-xl mx-auto py-8 px-2">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold">Sign in to Create a Post</h1>
+          <p className="text-muted-foreground">You need to be signed in to share with the community.</p>
+          <SignInButton mode="modal">
+            <Button>Sign In</Button>
+          </SignInButton>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-xl mx-auto py-8 px-2">
       <h1 className="text-2xl font-bold mb-4">Share Something with the Community</h1>
@@ -196,7 +173,7 @@ export default function NewPostPage() {
             {error}
           </div>
         )}
-        <Button type="submit" disabled={loading} className="w-full">
+        <Button type="submit" disabled={loading || !supabaseUser || userLoading} className="w-full">
           {loading ? 'Posting...' : 'Post'}
         </Button>
       </form>

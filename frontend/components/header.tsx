@@ -153,6 +153,11 @@ export function Header() {
                 </SignUpButton>
               </SignedOut>
               <SignedIn>
+                <Link href="/profile">
+                  <Button variant="ghost" size="sm" className="hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950 dark:hover:text-emerald-400">
+                    Profile
+                  </Button>
+                </Link>
                 <UserButton afterSignOutUrl="/" />
               </SignedIn>
             </div>
@@ -241,8 +246,15 @@ export function Header() {
                       </div>
                     </SignedOut>
                     <SignedIn>
-                      <div className="flex justify-center">
-                        <UserButton afterSignOutUrl="/" />
+                      <div className="space-y-3">
+                        <Link href="/profile" onClick={() => setIsOpen(false)}>
+                          <Button variant="outline" className="w-full hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950 dark:hover:text-emerald-400">
+                            Profile
+                          </Button>
+                        </Link>
+                        <div className="flex justify-center">
+                          <UserButton afterSignOutUrl="/" />
+                        </div>
                       </div>
                     </SignedIn>
                   </div>

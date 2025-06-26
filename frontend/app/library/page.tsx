@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 import { ErrorBoundary } from "@/components/error-boundary"
 import {
   Search,
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog"
 
 // --- Constants ---
-const API_BASE_URL = "http://localhost:4001"
+const API_BASE_URL = "http://localhost:4004" 
 
 // --- Type Definitions ---
 interface ScholarResource {
@@ -47,16 +47,18 @@ interface ScholarResource {
 interface YoutubeResource {
   title: string
   link: string
-  thumbnail: { static: string }
-  channel: { name: string }
+  thumbnail: string // Backend returns string, not object
+  channel: string // Backend returns string, not object
   views: string
   published_date: string
   length: string
+  description: string
+  source: string
 }
 
 interface UnifiedResource {
   id: string
-  title:string
+  title: string
   type: "article" | "video"
   source: string // Channel for YouTube, Publication for Scholar
   snippet: string
@@ -84,7 +86,7 @@ export default function LibraryPage() {
   useEffect(() => {
     const checkServerStatus = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/search?query=test`, {
+        const response = await fetch(`${API_BASE_URL}/health`, {
           method: 'GET',
           signal: AbortSignal.timeout(5000) // 5 second timeout
         })
@@ -98,7 +100,7 @@ export default function LibraryPage() {
   }, [])
   
   // --- API ---
-  const handleSearch = async (query: string) => {
+  const handleSearch = useCallback(async (query: string) => {
     if (!query.trim()) return
     
     setIsLoading(true)
@@ -125,8 +127,9 @@ export default function LibraryPage() {
         throw new Error('Invalid response format')
       }
       
-      setScholarResults(data.scholar || [])
-      setYoutubeResults(data.youtube || [])
+      // Ensure we have arrays for both scholar and youtube results
+      setScholarResults(Array.isArray(data.scholar) ? data.scholar : [])
+      setYoutubeResults(Array.isArray(data.youtube) ? data.youtube : [])
       
     } catch (error) {
       console.error("Failed to fetch search results:", error)
@@ -137,7 +140,7 @@ export default function LibraryPage() {
         if (error.name === 'AbortError') {
           errorMessage = "Request timed out. Please try again."
         } else if (error.message.includes('Failed to fetch')) {
-          errorMessage = "Cannot connect to the server. Please check if the backend is running on port 4001."
+          errorMessage = "Cannot connect to the server. Please check if the backend is running on port 4004."
         } else if (error.message.includes('HTTP error')) {
           errorMessage = `Server error: ${error.message}`
         }
@@ -155,11 +158,11 @@ export default function LibraryPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [toast])
   
   useEffect(() => {
-    // Only search if we have a valid query and we're not already loading
-    if (submittedQuery.trim() && !isLoading) {
+    // Only search on mount with the initial query
+    if (submittedQuery.trim()) {
       handleSearch(submittedQuery);
     }
     
@@ -168,7 +171,7 @@ export default function LibraryPage() {
       // Cancel any ongoing requests if component unmounts
       // The AbortSignal.timeout will handle this automatically
     };
-  }, []); // Only run on mount, not on every submittedQuery change
+  }, []); // Only run on mount
 
   // --- Data Transformation ---
   const unifiedResources: UnifiedResource[] = [
@@ -185,17 +188,17 @@ export default function LibraryPage() {
       id: `youtube-${index}-${item?.link || index}`,
       title: item?.title || 'Untitled',
       type: "video" as const,
-      source: item?.channel?.name || "Unknown Channel",
+      source: item?.channel || "Unknown Channel",
       snippet: `Published: ${item?.published_date || 'Unknown'} | Length: ${item?.length || 'Unknown'} | Views: ${item?.views || 'Unknown'}`,
       link: item?.link || '#',
-      thumbnail: item?.thumbnail?.static || item?.thumbnail || '',
+      thumbnail: item?.thumbnail || '',
       bookmarked: bookmarks[`youtube-${index}-${item?.link || index}`] || false,
     })),
   ]
 
-  const toggleBookmark = (id: string) => {
+  const toggleBookmark = useCallback((id: string) => {
     setBookmarks(prev => ({ ...prev, [id]: !prev[id] }))
-  }
+  }, [])
 
   // --- Render ---
   return (
@@ -209,7 +212,7 @@ export default function LibraryPage() {
           {serverStatus === 'offline' && (
             <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                ⚠️ Backend server is offline. Please ensure the AI Library backend is running on port 4001.
+                ⚠️ Backend server is offline. Please ensure the AI Library backend is running on port 4004.
               </p>
             </div>
           )}

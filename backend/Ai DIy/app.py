@@ -30,8 +30,8 @@ CORS(app, origins=[
 ])
 
 # Configuration - Use environment variables for security
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', "AIzaSyCCXgQzeEa4sr3PO8X1Y9KsJjXwbdTnNLY")
-SCRAPINGDOG_API_KEY = os.getenv('SCRAPINGDOG_API_KEY', "685a76e11d2914e60db6dd2")  
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', "AIzaSyCqHlRThnjAFm69qzPk7b1uhecSFatSdU0")
+SCRAPINGDOG_API_KEY = os.getenv('SCRAPINGDOG_API_KEY', "685d6b859d31b75e1de18ecc")  
 
 # GitHub API credentials
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', "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")
@@ -944,6 +944,85 @@ Generate 5-8 specific tools that are directly relevant to building this project.
         logger.error(f"Error generating specific tools with AI: {str(e)}")
         return []
 
+def calculate_phase_times(available_time):
+    """Calculate proper time distribution for phases based on total available time"""
+    try:
+        # Parse the available time
+        time_str = available_time.strip().lower()
+        
+        # Convert to minutes
+        total_minutes = 0
+        if 'hour' in time_str or 'hr' in time_str:
+            # Extract hours
+            if 'hour' in time_str:
+                hours = int(time_str.split('hour')[0].strip())
+            else:
+                hours = int(time_str.split('hr')[0].strip())
+            total_minutes = hours * 60
+        elif 'minute' in time_str or 'min' in time_str:
+            # Extract minutes
+            if 'minute' in time_str:
+                minutes = int(time_str.split('minute')[0].strip())
+            else:
+                minutes = int(time_str.split('min')[0].strip())
+            total_minutes = minutes
+        else:
+            # Try to extract number and assume minutes
+            import re
+            numbers = re.findall(r'\d+', time_str)
+            if numbers:
+                total_minutes = int(numbers[0])
+            else:
+                total_minutes = 120  # Default 2 hours
+        
+        # Calculate phase times (4 phases with proportional distribution)
+        # Phase 1: Setup & Planning (15%)
+        # Phase 2: Learning & Exploration (25%)
+        # Phase 3: Implementation & Build (45%)
+        # Phase 4: Testing & Debugging (15%)
+        
+        phase1_minutes = int(total_minutes * 0.15)
+        phase2_minutes = int(total_minutes * 0.25)
+        phase3_minutes = int(total_minutes * 0.45)
+        phase4_minutes = total_minutes - phase1_minutes - phase2_minutes - phase3_minutes
+        
+        # Ensure minimum times
+        phase1_minutes = max(phase1_minutes, 15)
+        phase2_minutes = max(phase2_minutes, 20)
+        phase3_minutes = max(phase3_minutes, 30)
+        phase4_minutes = max(phase4_minutes, 15)
+        
+        # Convert back to readable format
+        def format_time(minutes):
+            if minutes >= 60:
+                hours = minutes // 60
+                mins = minutes % 60
+                if mins == 0:
+                    return f"{hours} hour{'s' if hours > 1 else ''}"
+                else:
+                    return f"{hours} hour{'s' if hours > 1 else ''} {mins} minute{'s' if mins > 1 else ''}"
+            else:
+                return f"{minutes} minute{'s' if minutes > 1 else ''}"
+        
+        return {
+            'phase1': format_time(phase1_minutes),
+            'phase2': format_time(phase2_minutes),
+            'phase3': format_time(phase3_minutes),
+            'phase4': format_time(phase4_minutes),
+            'total_minutes': total_minutes
+        }
+        
+    except Exception as e:
+        logger.error(f"Error calculating phase times: {str(e)}")
+        # Fallback to default times
+        return {
+            'phase1': '30 minutes',
+            'phase2': '45 minutes', 
+            'phase3': '60 minutes',
+            'phase4': '45 minutes',
+            'total_minutes': 180
+        }
+
 def generate_project_task(topic, transcript_content, available_time, user_skill_level="beginner", 
                          user_description="", youtube_videos=None, knowledge_assessment="", category="software",
                          user_profile=None):
@@ -980,6 +1059,10 @@ def generate_project_task(topic, transcript_content, available_time, user_skill_
         skills_text = ', '.join(user_skills) if user_skills else 'None specified'
         previous_projects_text = ', '.join(user_previous_projects) if user_previous_projects else 'None specified'
         
+        # Calculate proper phase times based on available time
+        phase_times = calculate_phase_times(available_time)
+        logger.info(f"Calculated phase times: {phase_times}")
+        
         # Create a comprehensive prompt for project generation with emphasis on specific tools
         prompt = f"""
 You are an AI-powered DIY project mentor. Your task is to generate a personalized and engaging project idea and their roadmap for a learner based on their background, available time, and content they've recently learned. The goal is to help them build confidence through hands-on application by suggesting a creative, domain-specific project,assuming learner will learn required skills if he don't know that skills.
@@ -994,7 +1077,7 @@ USER PROFILE:
         - Current Skills: {skills_text}
         - Previous Projects: {previous_projects_text}
         - Skill Level: {user_skill_level}
-        - Available Time: {available_time}
+        - Available Time: {available_time} (Total: {phase_times['total_minutes']} minutes)
         - Learner Description: {user_description}
         - Knowledge Assessment: {knowledge_assessment}
         
@@ -1049,18 +1132,18 @@ TOOLS & MATERIALS:
         
         PROJECT ROADMAP:
 
-PHASE 1: Setup & Planning ({int(available_time.split()[0])//4 if available_time.split()[0].isdigit() else '30'} minutes)
+PHASE 1: Setup & Planning ({phase_times['phase1']})
 - [3-4 setup tasks: research, install tools, define project scope, etc.]
 {"- Explore relevant datasets or APIs" if is_ml else ""}
 
-PHASE 2: Learning & Exploration ({int(available_time.split()[0])//3 if available_time.split()[0].isdigit() else '45'} minutes)
+PHASE 2: Learning & Exploration ({phase_times['phase2']})
 - [3-4 learning tasks: review examples, study methods, test snippets]
 
-PHASE 3: Implementation & Build ({int(available_time.split()[0])//2 if available_time.split()[0].isdigit() else '60'} minutes)
+PHASE 3: Implementation & Build ({phase_times['phase3']})
 - [4-5 implementation tasks: write code, build prototypes, design UI]
 {"- Train and evaluate ML models" if is_ml else ""}
 
-PHASE 4: Testing, Debugging & Reflection (Remaining time)
+PHASE 4: Testing, Debugging & Reflection ({phase_times['phase4']})
 - [3-4 tasks: run tests, fix bugs, review outcomes, document learnings]
 
 TEMPLATES / HINTS (if applicable):
@@ -1093,24 +1176,24 @@ REMEMBER: The TOOLS & MATERIALS section is CRITICAL. Provide SPECIFIC tools with
         logger.info(f"First 500 characters: {project_text[:500]}")
         
         # Parse the project text into structured data
-        project_data = parse_project_text(project_text)
+        parsed_sections = parse_project_text(project_text)
         
-        # Add additional metadata
-        project_data.update({
-            'project_title': project_data.get('project_title', f"DIY Project: {topic}"),
-            'estimated_time': project_data.get('estimated_time', available_time),
-            'difficulty_level': project_data.get('difficulty_level', user_skill_level),
-            'knowledge_assessment': project_data.get('knowledge_assessment', knowledge_assessment),
-            'domain': project_data.get('domain', ''),
-            'project_overview': project_data.get('project_overview', ''),
-            'prerequisites': project_data.get('prerequisites', ''),
-            'tools_and_materials': project_data.get('tools_and_materials', ''),
-            'learning_objectives': project_data.get('learning_objectives', ''),
-            'project_roadmap': project_data.get('project_roadmap', ''),
-            'templates_hints': project_data.get('templates_hints', ''),
-            'common_pitfalls_and_troubleshooting': project_data.get('common_pitfalls_and_troubleshooting', ''),
-            'success_criteria': project_data.get('success_criteria', ''),
-            'next_steps_and_extensions': project_data.get('next_steps_and_extensions', ''),
+        # Map parsed sections to expected keys
+        project_data = {
+            'project_title': parsed_sections.get('project_title', f"DIY Project: {topic}"),
+            'estimated_time': parsed_sections.get('estimated_time', available_time),
+            'difficulty_level': parsed_sections.get('difficulty_level', user_skill_level),
+            'knowledge_assessment': parsed_sections.get('knowledge_assessment', knowledge_assessment),
+            'domain': parsed_sections.get('domain', ''),
+            'project_overview': parsed_sections.get('project_overview', ''),
+            'prerequisites': parsed_sections.get('prerequisites', ''),
+            'tools_and_materials': parsed_sections.get('tools_materials', ''),  # Map from parsed key
+            'learning_objectives': parsed_sections.get('learning_objectives', ''),
+            'project_roadmap': parsed_sections.get('project_roadmap', ''),
+            'templates_hints': parsed_sections.get('templates_hints', ''),
+            'common_pitfalls_and_troubleshooting': parsed_sections.get('common_pitfalls_and_how_to_avoid_them', ''),
+            'success_criteria': parsed_sections.get('success_criteria', ''),
+            'next_steps_and_extensions': parsed_sections.get('extensions_next_steps', ''),
             'is_ml_project': is_ml,
             'phase_videos': phase_videos,
             'user_profile_used': {
@@ -1120,12 +1203,14 @@ REMEMBER: The TOOLS & MATERIALS section is CRITICAL. Provide SPECIFIC tools with
                 'skills_count': len(user_skills),
                 'previous_projects_count': len(user_previous_projects)
             }
-        })
+        }
         
         # Debug logging
         logger.info(f"Generated tools_and_materials: {project_data.get('tools_and_materials', 'EMPTY')}")
         logger.info(f"Raw project text length: {len(project_text)}")
-        logger.info(f"Parsed sections: {list(project_data.keys())}")
+        logger.info(f"Parsed sections: {list(parsed_sections.keys())}")
+        logger.info(f"Tools & Materials from parsed sections: {parsed_sections.get('tools_materials', 'NOT_FOUND')}")
+        logger.info(f"First 200 chars of project text: {project_text[:200]}")
         
         # Generate specific tools using dedicated AI function
         specific_tools = generate_specific_tools_with_ai(
@@ -1236,6 +1321,26 @@ REMEMBER: The TOOLS & MATERIALS section is CRITICAL. Provide SPECIFIC tools with
             logger.warning("No tools and materials generated by AI, using fallback")
             fallback_project = create_fallback_project(topic, available_time, user_skill_level, user_description, youtube_videos)
             project_data['tools_and_materials'] = fallback_project.get('tools_and_materials', '')
+            logger.info(f"Applied fallback tools and materials: {project_data['tools_and_materials']}")
+        
+        # Double-check: if still no tools, generate them using the suggest_tools function
+        if not project_data.get('tools_and_materials', '').strip():
+            logger.warning("Still no tools and materials after fallback, generating with suggest_tools")
+            try:
+                suggested_tools = suggest_tools(
+                    topic, 
+                    category, 
+                    project_data.get('project_title', ''),
+                    project_data.get('project_overview', '')
+                )
+                if suggested_tools and suggested_tools.get('tools'):
+                    project_data['tools_and_materials'] = '\n'.join([f"- {tool}" for tool in suggested_tools.get('tools', [])])
+                    logger.info(f"Generated tools using suggest_tools: {project_data['tools_and_materials']}")
+            except Exception as e:
+                logger.error(f"Error generating tools with suggest_tools: {str(e)}")
+                # Final fallback: use basic tools
+                project_data['tools_and_materials'] = "- Computer with internet access\n- Text editor or IDE\n- Basic programming knowledge\n- Project documentation"
+                logger.info("Applied final fallback tools")
         
         if youtube_videos:
             project_data['source_videos'] = youtube_videos
@@ -1243,6 +1348,12 @@ REMEMBER: The TOOLS & MATERIALS section is CRITICAL. Provide SPECIFIC tools with
         if is_ml:
             project_data['datasets'] = get_dataset_recommendations(topic, user_skill_level)
             project_data['is_ml_project'] = True
+        
+        # Generate timeline data from the project roadmap
+        timeline_data = generate_timeline_from_roadmap(project_data, available_time)
+        if timeline_data:
+            project_data['timeline'] = timeline_data
+            logger.info(f"Generated timeline with {len(timeline_data)} phases")
         
         return project_data
         
@@ -1306,6 +1417,9 @@ def distribute_videos_to_phases(videos, topic, skill_level):
 def create_fallback_project(topic, available_time, user_skill_level, user_description="", youtube_videos=None):
     """Create a fallback project when AI generation fails"""
     is_ml = is_ml_related_topic(topic, user_description)
+    
+    # Calculate proper phase times based on available time
+    phase_times = calculate_phase_times(available_time)
     
     # Determine project type and set appropriate tools
     topic_lower = topic.lower()
@@ -1477,22 +1591,22 @@ def create_fallback_project(topic, available_time, user_skill_level, user_descri
         'tools_and_materials': '\n'.join([f"- {tool}" for tool in tools_materials]),
         'learning_objectives': f"- Understand {topic} fundamentals\n- Build a working project\n- Learn best practices\n- Document your work",
         'project_roadmap': f"""
-PHASE 1: Setup and Planning (30 minutes)
+PHASE 1: Setup and Planning ({phase_times['phase1']})
 - Set up development environment
 - Research project requirements
 - Create project structure
 
-PHASE 2: Learning (45 minutes)
+PHASE 2: Learning ({phase_times['phase2']})
 - Study relevant tutorials
 - Practice basic concepts
 - Take notes on key points
 
-PHASE 3: Implementation (60 minutes)
+PHASE 3: Implementation ({phase_times['phase3']})
 - Build the core project
 - Implement main features
 - Test basic functionality
 
-PHASE 4: Testing & Review (Remaining time)
+PHASE 4: Testing & Review ({phase_times['phase4']})
 - Test all features
 - Fix any issues
 - Document your work
@@ -1501,7 +1615,45 @@ PHASE 4: Testing & Review (Remaining time)
         'common_pitfalls_and_troubleshooting': f"- Don't rush through the basics\n- Take breaks when stuck\n- Ask for help when needed\n- Document your learning process",
         'success_criteria': f"- Completed basic {topic} project\n- Understanding of core concepts\n- Documented learning outcomes\n- Identified areas for further study",
         'next_steps_and_extensions': f"- Explore advanced {topic} topics\n- Build more complex projects\n- Join {topic} communities\n- Consider formal courses or certifications",
-        'is_ml_project': is_ml
+        'is_ml_project': is_ml,
+        'timeline': [
+            {
+                "time": "Step 1",
+                "title": "Research & Plan",
+                "description": "Understand the project requirements and create a plan",
+                "icon": "Brain",
+                "color": "primary",
+                "milestone": False,
+                "duration": phase_times['phase1']
+            },
+            {
+                "time": "Step 2",
+                "title": "Design & Prototype",
+                "description": "Create initial designs and prototypes",
+                "icon": "Eye",
+                "color": "secondary",
+                "milestone": False,
+                "duration": phase_times['phase2']
+            },
+            {
+                "time": "Step 3",
+                "title": "Build Core Features",
+                "description": "Develop the main functionality",
+                "icon": "Code",
+                "color": "success",
+                "milestone": True,
+                "duration": phase_times['phase3']
+            },
+            {
+                "time": "Step 4",
+                "title": "Test & Refine",
+                "description": "Validate functionality and make improvements",
+                "icon": "CheckCircle",
+                "color": "info",
+                "milestone": False,
+                "duration": phase_times['phase4']
+            }
+        ]
     }
 
 def clean_tools_and_materials(tools_text):
@@ -1594,6 +1746,7 @@ def parse_project_text(project_text):
                     content_after_colon = line.split(':', 1)[1].strip() if ':' in line else ''
                     current_content = [content_after_colon] if content_after_colon else []
                     logger.info(f"Started new section '{current_section}' with content: '{content_after_colon}'")
+                    logger.info(f"Original marker: '{marker}' -> processed key: '{current_section}'")
                     is_section_marker = True
                     break
             
@@ -2317,6 +2470,195 @@ def api_info():
         },
         'frontend_integration': 'This API is designed to work with the Next.js DIY Generator frontend component'
     })
+
+def generate_timeline_from_roadmap(project_data, available_time):
+    """Generate workflow-focused timeline data from project roadmap phases"""
+    try:
+        if not model:
+            return []
+        
+        roadmap_text = project_data.get('project_roadmap', '')
+        project_title = project_data.get('project_title', '')
+        project_overview = project_data.get('project_overview', '')
+        
+        if not roadmap_text:
+            return []
+        
+        # Calculate phase times for accurate time distribution
+        phase_times = calculate_phase_times(available_time)
+        
+        # Analyze project complexity to determine step count
+        complexity_score = analyze_project_complexity(project_title, project_overview, roadmap_text, available_time)
+        
+        prompt = f"""
+        Create a streamlined workflow timeline for this project. This should be different from the detailed project roadmap - focus on key workflow steps that show the logical progression.
+
+        PROJECT: {project_title}
+        OVERVIEW: {project_overview[:300]}...
+        ROADMAP: {roadmap_text}
+        TOTAL TIME: {available_time} ({phase_times['total_minutes']} minutes)
+        PROJECT COMPLEXITY: {complexity_score}
+
+        IMPORTANT: Create exactly {complexity_score['steps']} workflow steps based on the project complexity.
+        - Simple projects (2-3 hours): 3-4 steps
+        - Medium projects (4-8 hours): 5-6 steps  
+        - Complex projects (8+ hours): 7-8 steps
+
+        Create a workflow timeline with these characteristics:
+        - Each step represents a major workflow phase
+        - Focus on "what" and "why" not detailed "how"
+        - Use workflow-oriented language (e.g., "Research & Plan", "Design & Prototype", "Build Core Features")
+        - Be specific to this project, not generic
+        - Each step should have a clear purpose and outcome
+        - Distribute the total time ({available_time}) across all {complexity_score['steps']} steps appropriately
+
+        For each step include:
+        - time: brief time indicator (e.g., "Step 1", "Phase 1", or specific time)
+        - title: workflow-focused title (3-5 words max)
+        - description: what this step accomplishes (1-2 sentences)
+        - icon: one of [Calendar, Clock, CheckCircle, Play, Target, Zap, Code, Cpu, Sparkles, Package, Users, Brain, Eye, AlertCircle]
+        - color: one of [primary, secondary, success, warning, info, grey]
+        - milestone: true only for major achievements (max 2 milestones)
+        - duration: estimated time for this step (distribute {available_time} across {complexity_score['steps']} steps)
+
+        Return as JSON array. Make it project-specific, not generic.
+        """
+        
+        response = model.generate_content(prompt)
+        timeline_text = response.text.strip()
+        
+        # Try to parse JSON from the response
+        try:
+            # Extract JSON from the response if it's wrapped in markdown
+            if '```json' in timeline_text:
+                timeline_text = timeline_text.split('```json')[1].split('```')[0]
+            elif '```' in timeline_text:
+                timeline_text = timeline_text.split('```')[1]
+            
+            timeline_data = json.loads(timeline_text)
+            
+            # Validate and clean the timeline data
+            cleaned_timeline = []
+            for step in timeline_data:
+                if isinstance(step, dict) and 'title' in step and 'description' in step:
+                    # Ensure required fields
+                    cleaned_step = {
+                        'time': step.get('time', ''),
+                        'title': step.get('title', '').strip(),
+                        'description': step.get('description', '').strip(),
+                        'icon': step.get('icon', 'Calendar'),
+                        'color': step.get('color', 'primary'),
+                        'milestone': step.get('milestone', False),
+                        'duration': step.get('duration', '')
+                    }
+                    cleaned_timeline.append(cleaned_step)
+            
+            logger.info(f"Generated workflow timeline with {len(cleaned_timeline)} steps (target: {complexity_score['steps']})")
+            return cleaned_timeline
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse timeline JSON: {e}")
+            logger.error(f"Timeline text: {timeline_text}")
+            return []
+            
+    except Exception as e:
+        logger.error(f"Error generating timeline: {str(e)}")
+        return []
+
+def analyze_project_complexity(project_title, project_overview, roadmap_text, available_time):
+    """Analyze project complexity to determine appropriate step count"""
+    try:
+        # Parse available time to minutes
+        time_str = available_time.strip().lower()
+        total_minutes = 0
+        
+        if 'hour' in time_str or 'hr' in time_str:
+            if 'hour' in time_str:
+                hours = int(time_str.split('hour')[0].strip())
+            else:
+                hours = int(time_str.split('hr')[0].strip())
+            total_minutes = hours * 60
+        elif 'minute' in time_str or 'min' in time_str:
+            if 'minute' in time_str:
+                minutes = int(time_str.split('minute')[0].strip())
+            else:
+                minutes = int(time_str.split('min')[0].strip())
+            total_minutes = minutes
+        else:
+            import re
+            numbers = re.findall(r'\d+', time_str)
+            if numbers:
+                total_minutes = int(numbers[0])
+            else:
+                total_minutes = 120
+        
+        # Analyze complexity factors
+        complexity_factors = {
+            'time_based': 0,
+            'feature_based': 0,
+            'phase_based': 0
+        }
+        
+        # Time-based complexity
+        if total_minutes <= 180:  # 3 hours or less
+            complexity_factors['time_based'] = 1  # Simple
+        elif total_minutes <= 480:  # 8 hours or less
+            complexity_factors['time_based'] = 2  # Medium
+        else:
+            complexity_factors['time_based'] = 3  # Complex
+        
+        # Feature-based complexity (from overview)
+        overview_lower = project_overview.lower()
+        feature_keywords = {
+            'simple': 1, 'basic': 1, 'todo': 1, 'calculator': 1,
+            'weather': 2, 'dashboard': 2, 'api': 2, 'database': 2,
+            'e-commerce': 3, 'platform': 3, 'authentication': 3, 'payment': 3, 'admin': 3
+        }
+        
+        for keyword, score in feature_keywords.items():
+            if keyword in overview_lower:
+                complexity_factors['feature_based'] = max(complexity_factors['feature_based'], score)
+        
+        # Phase-based complexity (from roadmap)
+        phase_count = len([line for line in roadmap_text.split('\n') if line.strip().startswith('PHASE')])
+        if phase_count <= 3:
+            complexity_factors['phase_based'] = 1
+        elif phase_count <= 5:
+            complexity_factors['phase_based'] = 2
+        else:
+            complexity_factors['phase_based'] = 3
+        
+        # Calculate overall complexity
+        avg_complexity = sum(complexity_factors.values()) / len(complexity_factors)
+        
+        # Determine step count based on complexity
+        if avg_complexity <= 1.5:
+            steps = 4  # Simple: 3-4 steps
+        elif avg_complexity <= 2.5:
+            steps = 6  # Medium: 5-6 steps
+        else:
+            steps = 8  # Complex: 7-8 steps
+        
+        complexity_level = "Simple" if avg_complexity <= 1.5 else "Medium" if avg_complexity <= 2.5 else "Complex"
+        
+        logger.info(f"Project complexity analysis: {complexity_factors}, avg: {avg_complexity:.1f}, level: {complexity_level}, steps: {steps}")
+        
+        return {
+            'level': complexity_level,
+            'steps': steps,
+            'factors': complexity_factors,
+            'avg_complexity': avg_complexity
+        }
+        
+    except Exception as e:
+        logger.error(f"Error analyzing project complexity: {str(e)}")
+        # Fallback to medium complexity
+        return {
+            'level': 'Medium',
+            'steps': 6,
+            'factors': {'time_based': 2, 'feature_based': 2, 'phase_based': 2},
+            'avg_complexity': 2.0
+        }
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 4009))  # Use PORT env var or default to 4009

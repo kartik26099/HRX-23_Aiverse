@@ -176,7 +176,7 @@ export default function CourseGeneratorPage() {
 
   const handleGenerateCourse = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     console.log("Form submitted with data:", formData)
     console.log("Generate multiple:", generateMultiple)
     console.log("Replace hardcoded:", replaceHardcoded)
@@ -313,21 +313,21 @@ export default function CourseGeneratorPage() {
         
         // Generate single course
         response = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      })
 
         console.log("Single course response status:", response.status)
         console.log("Single course response ok:", response.ok)
 
-        if (!response.ok) {
-          const errorData = await response.json()
+      if (!response.ok) {
+        const errorData = await response.json()
           console.error("Single course error response:", errorData)
-          throw new Error(errorData.error || `HTTP error! Status: ${response.status}`)
-        }
+        throw new Error(errorData.error || `HTTP error! Status: ${response.status}`)
+      }
 
-        const generatedCourse = await response.json()
+      const generatedCourse = await response.json()
         console.log("Single course response data:", generatedCourse)
 
         // Validate the generated course structure
@@ -336,8 +336,8 @@ export default function CourseGeneratorPage() {
           throw new Error("Invalid course structure received from server")
         }
 
-        const newCourse: Course = {
-          id: `gen-${Date.now()}`,
+      const newCourse: Course = {
+        id: `gen-${Date.now()}`,
           title: generatedCourse.title || formData.title,
           description: generatedCourse.goal || formData.goal,
           level: (generatedCourse.level?.charAt(0).toUpperCase() + generatedCourse.level?.slice(1)) as Course["level"] || "Beginner",
@@ -352,7 +352,7 @@ export default function CourseGeneratorPage() {
             recommended_videos: m.recommended_videos || []
           })),
           learning_objectives: generatedCourse.modules.map((m: Module) => `Understand ${m.title?.toLowerCase() || 'the topic'}`),
-        }
+      }
 
         generatedCourses = [newCourse]
         console.log("Generated single course:", generatedCourses)
@@ -589,92 +589,92 @@ export default function CourseGeneratorPage() {
         {/* Generate Course Button */}
         <div className="text-center mb-12">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
-            <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-6 text-lg font-semibold group">
-                  <Sparkles className="mr-3 h-6 w-6 group-hover:rotate-12 transition-transform" />
-                  Generate New Course
-                </Button>
-              </DialogTrigger>
+          <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-6 text-lg font-semibold group">
+                <Sparkles className="mr-3 h-6 w-6 group-hover:rotate-12 transition-transform" />
+                Generate New Course
+              </Button>
+            </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 flex flex-col">
                 <DialogHeader className="flex-shrink-0 pb-4">
-                  <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-3">
-                    <Brain className="h-6 w-6 text-blue-600" />
-                    <span>Generate Personalized Course</span>
-                  </DialogTitle>
-                  <DialogDescription className="text-slate-600 dark:text-slate-400 text-base">
-                    Tell us about your learning goals and current knowledge level to create a tailored course.
-                  </DialogDescription>
-                </DialogHeader>
-                
+                <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-3">
+                  <Brain className="h-6 w-6 text-blue-600" />
+                  <span>Generate Personalized Course</span>
+                </DialogTitle>
+                <DialogDescription className="text-slate-600 dark:text-slate-400 text-base">
+                  Tell us about your learning goals and current knowledge level to create a tailored course.
+                </DialogDescription>
+              </DialogHeader>
+              
                 <form onSubmit={handleGenerateCourse} className="flex flex-col flex-1 min-h-0">
                   <div className="flex-1 overflow-y-auto space-y-6 pr-2">
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="title" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                          Course Topic
-                        </Label>
-                        <Input
-                          id="title"
-                          placeholder="e.g., Machine Learning, Web Development, Data Science"
-                          value={formData.title}
-                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                          className="mt-2 border-2 border-slate-200 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400"
-                        />
-                      </div>
-                      
-                      <div>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="title" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      Course Topic
+                    </Label>
+                    <Input
+                      id="title"
+                      placeholder="e.g., Machine Learning, Web Development, Data Science"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="mt-2 border-2 border-slate-200 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400"
+                    />
+                  </div>
+                  
+                  <div>
                         <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                           Skill Level
                         </Label>
-                        <RadioGroup
-                          value={formData.level}
-                          onValueChange={(value) => setFormData({ ...formData, level: value })}
-                          className="mt-2 space-y-3"
-                        >
-                          {[
-                            { value: "beginner", label: "Beginner", description: "New to the topic" },
-                            { value: "intermediate", label: "Intermediate", description: "Some experience" },
-                            { value: "advanced", label: "Advanced", description: "Experienced learner" },
-                          ].map((level) => (
-                            <div key={level.value} className="flex items-center space-x-3">
-                              <RadioGroupItem value={level.value} id={level.value} />
-                              <Label htmlFor={level.value} className="flex flex-col cursor-pointer">
-                                <span className="font-medium text-slate-800 dark:text-slate-200">{level.label}</span>
-                                <span className="text-sm text-slate-600 dark:text-slate-400">{level.description}</span>
-                              </Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="goal" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                          Learning Goal
-                        </Label>
-                        <Textarea
-                          id="goal"
-                          placeholder="What do you want to achieve? What skills do you want to develop?"
-                          value={formData.goal}
-                          onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                    <RadioGroup
+                      value={formData.level}
+                      onValueChange={(value) => setFormData({ ...formData, level: value })}
+                      className="mt-2 space-y-3"
+                    >
+                      {[
+                        { value: "beginner", label: "Beginner", description: "New to the topic" },
+                        { value: "intermediate", label: "Intermediate", description: "Some experience" },
+                        { value: "advanced", label: "Advanced", description: "Experienced learner" },
+                      ].map((level) => (
+                        <div key={level.value} className="flex items-center space-x-3">
+                          <RadioGroupItem value={level.value} id={level.value} />
+                          <Label htmlFor={level.value} className="flex flex-col cursor-pointer">
+                            <span className="font-medium text-slate-800 dark:text-slate-200">{level.label}</span>
+                            <span className="text-sm text-slate-600 dark:text-slate-400">{level.description}</span>
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="goal" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      Learning Goal
+                    </Label>
+                    <Textarea
+                      id="goal"
+                      placeholder="What do you want to achieve? What skills do you want to develop?"
+                      value={formData.goal}
+                      onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
                           className="mt-2 border-2 border-slate-200 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400 min-h-[80px]"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="currentState" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                          Current Knowledge
-                        </Label>
-                        <Textarea
-                          id="currentState"
-                          placeholder="What do you already know about this topic? Any specific areas you want to focus on?"
-                          value={formData.currentState}
-                          onChange={(e) => setFormData({ ...formData, currentState: e.target.value })}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="currentState" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      Current Knowledge
+                    </Label>
+                    <Textarea
+                      id="currentState"
+                      placeholder="What do you already know about this topic? Any specific areas you want to focus on?"
+                      value={formData.currentState}
+                      onChange={(e) => setFormData({ ...formData, currentState: e.target.value })}
                           className="mt-2 border-2 border-slate-200 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400 min-h-[80px]"
-                        />
-                      </div>
-                    </div>
-                    
+                    />
+                  </div>
+                </div>
+                
                     {/* Generation Options */}
                     <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
                       <h4 className="font-semibold text-slate-800 dark:text-slate-200 flex items-center space-x-2">
@@ -724,36 +724,36 @@ export default function CourseGeneratorPage() {
                   </div>
                   
                   <DialogFooter className="flex-shrink-0 pt-4 border-t border-slate-200 dark:border-slate-600">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsGenerateDialogOpen(false)}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsGenerateDialogOpen(false)}
                       disabled={isGenerating}
                       className="border-2 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={isGenerating}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isGenerating}
                       className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="mr-2 h-4 w-4" />
+                  >
+                    {isGenerating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2 h-4 w-4" />
                           {generateMultiple ? 'Generate Courses' : 'Generate Course'}
-                        </>
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
             
             {/* Course Management Buttons */}
             <div className="flex gap-2">

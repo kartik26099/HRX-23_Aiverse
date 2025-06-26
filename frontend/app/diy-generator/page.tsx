@@ -15,6 +15,7 @@ import { Wrench, Clock, Calendar, CheckCircle, Target, Lightbulb, Package, Exter
 import { toast } from "sonner"
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabaseClient'
+import ProjectTimeline from '@/components/ProjectTimeline'
 
 interface ProjectRoadmap {
   title: string
@@ -110,6 +111,16 @@ interface ProjectRoadmap {
     skills_count: number
     previous_projects_count: number
   } | null
+  timeline?: {
+    time?: string;
+    title: string;
+    description: string;
+    icon: string;
+    color?: 'primary' | 'secondary' | 'grey' | 'default' | 'success' | 'warning' | 'info';
+    variant?: 'outlined' | 'filled';
+    milestone?: boolean;
+    duration?: string;
+  }[]
 }
 
 interface ApiResponse {
@@ -295,7 +306,7 @@ export default function DIYGeneratorPage() {
   }
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4009"
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.topic.trim() || !formData.availableHours) {
@@ -368,6 +379,7 @@ export default function DIYGeneratorPage() {
         softwareTools: data.software_tools || undefined,
         flowchart: data.flowchart || undefined,
         userProfileUsed: data.project_data?.user_profile_used || null,
+        timeline: data.project_data?.timeline || [],
       }
       
       // Debug: Log the tools and materials data
@@ -1063,6 +1075,15 @@ export default function DIYGeneratorPage() {
                         {roadmap.projectOverview}
                       </p>
                     </div>
+                  )}
+
+                  {/* Project Timeline - Enhanced */}
+                  {roadmap.timeline && roadmap.timeline.length > 0 && (
+                    <ProjectTimeline 
+                      data={roadmap.timeline}
+                      title="Project Workflow"
+                      description="Key workflow steps to guide your project development"
+                    />
                   )}
 
                   {/* User Profile Usage Indicator */}

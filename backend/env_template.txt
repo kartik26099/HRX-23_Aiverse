@@ -52,3 +52,7 @@ UPLOAD_DIR=uploads
 
 # CORS Configuration
 ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001 
+
+# Supabase Configuration
+export SUPABASE_URL=your_url
+export SUPABASE_KEY=your_key 

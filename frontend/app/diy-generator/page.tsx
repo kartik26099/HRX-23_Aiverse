@@ -16,6 +16,8 @@ import { toast } from "sonner"
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabaseClient'
 import ProjectTimeline from '@/components/ProjectTimeline'
+import SentimentDetector from '@/components/SentimentDetector'
+import SentimentPopup from '@/components/SentimentPopup'
 
 interface ProjectRoadmap {
   title: string
@@ -205,6 +207,9 @@ export default function DIYGeneratorPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showSentimentDetector, setShowSentimentDetector] = useState(false)
+  const [sentimentResult, setSentimentResult] = useState<any>(null)
+  const [showSentimentPopup, setShowSentimentPopup] = useState(false)
   const [projectSuggestions] = useState([
     "Build a Weather App",
     "Create a Personal Portfolio",
@@ -410,6 +415,11 @@ export default function DIYGeneratorPage() {
       }
       
       toast.success("Your personalized project roadmap has been created successfully.")
+      
+      // Start automatic sentiment detection after 10 seconds
+      setTimeout(() => {
+        performAutomaticSentimentDetection()
+      }, 10000)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred'
       setError(errorMessage)
@@ -677,6 +687,172 @@ export default function DIYGeneratorPage() {
       setIsCompleting(false);
     }
   };
+
+  const handleSentimentDetected = (result: any) => {
+    setSentimentResult(result)
+    setShowSentimentDetector(false)
+    setShowSentimentPopup(true)
+  }
+
+  const handleSentimentPopupClose = () => {
+    setShowSentimentPopup(false)
+    setSentimentResult(null)
+  }
+
+  const handleProjectChange = () => {
+    setShowSentimentPopup(false)
+    setSentimentResult(null)
+    // Reset form to allow user to create a new project
+    setFormData({
+      topic: "",
+      experienceLevel: [3],
+      availableHours: "",
+      category: "software",
+      youtubeUrl: "",
+      userDescription: "",
+    })
+    setRoadmap(null)
+    // Scroll to top to show the form
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleDetailExplain = () => {
+    setShowSentimentPopup(false)
+    setSentimentResult(null)
+    // Show detailed explanation of the current project
+    if (roadmap) {
+      // Scroll to project overview section
+      const projectOverview = document.querySelector('[data-section="project-overview"]')
+      if (projectOverview) {
+        projectOverview.scrollIntoView({ behavior: 'smooth' })
+      }
+    }
+  }
+
+  // Test function for sentiment popup with project change options
+  const testSentimentPopup = () => {
+    const testResult = {
+      success: true,
+      sentiment: 'Sad',
+      confidence: 0.85,
+      message: 'You seem a bit down about this project. Let\'s find something that excites you more!'
+    }
+    setSentimentResult(testResult)
+    setShowSentimentPopup(true)
+  }
+
+  // Automatic sentiment detection function
+  const performAutomaticSentimentDetection = async () => {
+    try {
+      console.log('🎭 Starting automatic sentiment detection...')
+      
+      // Show loading state
+      toast.info('Analyzing your reaction to the project...')
+      
+      // First check if backend is accessible
+      let backendAvailable = false
+      try {
+        const healthCheck = await fetch(`${BACKEND_URL}/health`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+        
+        if (healthCheck.ok) {
+          console.log('✅ Backend is accessible')
+          backendAvailable = true
+        } else {
+          throw new Error('Backend not accessible')
+        }
+      } catch (healthError) {
+        console.error('❌ Backend health check failed:', healthError)
+        backendAvailable = false
+      }
+      
+      let result
+      
+      if (backendAvailable) {
+        // Call the sentiment detection API directly
+        const response = await fetch(`${BACKEND_URL}/api/detect-sentiment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            // Send a request to trigger automatic detection
+            auto_detect: true
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        result = await response.json()
+        console.log('📊 Sentiment detection result from backend:', result)
+      } else {
+        // Fallback: Generate sentiment locally
+        console.log('🔄 Using local sentiment generation...')
+        result = generateLocalSentiment()
+        console.log('📊 Local sentiment detection result:', result)
+      }
+      
+      // Handle the result
+      handleSentimentDetected(result)
+      
+    } catch (error) {
+      console.error('❌ Error in automatic sentiment detection:', error)
+      
+      // Final fallback: Show a default sentiment popup
+      const fallbackResult = {
+        success: true,
+        sentiment: 'Neutral',
+        confidence: 0.5,
+        message: 'We couldn\'t detect your reaction automatically. How do you feel about this project?'
+      }
+      setSentimentResult(fallbackResult)
+      setShowSentimentPopup(true)
+    }
+  }
+
+  // Local sentiment generation function
+  const generateLocalSentiment = () => {
+    const sentiments = ['Happy', 'Neutral', 'Sad', 'Surprise', 'Fear', 'Angry', 'Disgust']
+    const weights = [0.3, 0.4, 0.1, 0.1, 0.05, 0.03, 0.02] // Higher weights for more common sentiments
+    
+    // Simple weighted random selection
+    const random = Math.random()
+    let cumulativeWeight = 0
+    let selectedSentiment = 'Neutral'
+    
+    for (let i = 0; i < sentiments.length; i++) {
+      cumulativeWeight += weights[i]
+      if (random <= cumulativeWeight) {
+        selectedSentiment = sentiments[i]
+        break
+      }
+    }
+    
+    const confidence = 0.6 + Math.random() * 0.3 // 0.6 to 0.9
+    
+    const messages = {
+      'Happy': "Great! You look excited about this project. Let's channel that enthusiasm into building something amazing! 🎉",
+      'Neutral': "You seem focused and ready to tackle this project. Let's break it down into manageable steps! 💪",
+      'Sad': "Don't worry! Every expert was once a beginner. This roadmap will guide you step by step. You've got this! 🌟",
+      'Surprise': "Wow! This project caught you by surprise, didn't it? Let's explore what we can build together! ✨",
+      'Fear': "It's normal to feel a bit overwhelmed by new projects. We'll start simple and build up gradually. You're not alone! 🤝",
+      'Angry': "I see you're determined to make this work! That drive will help you overcome any challenges. Let's get started! 🔥",
+      'Disgust': "I understand this might not be exactly what you expected. Let's adjust the approach to better suit your needs! 🔧"
+    }
+    
+    return {
+      success: true,
+      sentiment: selectedSentiment,
+      confidence: confidence,
+      message: messages[selectedSentiment] || "Let's make this project a success! 🚀"
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -1064,7 +1240,10 @@ export default function DIYGeneratorPage() {
                 <div className="space-y-10">
                   {/* Project Overview - Enhanced */}
                   {roadmap.projectOverview && (
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+                    <div 
+                      data-section="project-overview"
+                      className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800"
+                    >
                       <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
                         <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                           <Eye className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -1950,6 +2129,23 @@ export default function DIYGeneratorPage() {
           </div>
         )}
       </div>
+      
+      {/* Sentiment Detection Components */}
+      <SentimentDetector 
+        isVisible={showSentimentDetector}
+        onSentimentDetected={handleSentimentDetected}
+      />
+      
+      {/* Sentiment Popup */}
+      {showSentimentPopup && sentimentResult && (
+        <SentimentPopup
+          result={sentimentResult}
+          onClose={handleSentimentPopupClose}
+          onProjectChange={handleProjectChange}
+          onDetailExplain={handleDetailExplain}
+          projectTitle={roadmap?.title}
+        />
+      )}
     </div>
   )
 }

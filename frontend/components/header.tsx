@@ -37,6 +37,7 @@ export function Header() {
   const navigationItems = [
     { name: "CourseWeaver", href: "/course-generator", color: "hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950 dark:hover:text-blue-400" },
     { name: "LearnLens", href: "/ai-advisor", color: "hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-purple-950 dark:hover:text-purple-400" },
+    { name: "AI Collab Connector", href: "/ai-collab-connector", color: "hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950 dark:hover:text-emerald-400 font-semibold" },
     { name: "EduMentor", href: "/ai-faculty", color: "hover:bg-pink-50 hover:text-pink-600 dark:hover:bg-pink-950 dark:hover:text-pink-400" },
     { name: "ResearchMate", href: "/research-helper", color: "hover:bg-cyan-50 hover:text-cyan-600 dark:hover:bg-cyan-950 dark:hover:text-cyan-400" },
     { name: "KnowVault", href: "/library", color: "hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950 dark:hover:text-emerald-400" },

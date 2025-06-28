@@ -78,6 +78,13 @@ class ServiceManager:
                 'port': 4009,
                 'env_var': 'PORT_AI_DIY',
                 'description': 'AI DIY Service'
+            },
+            'ai_collab_connector': {
+                'path': 'ai_collab_connector',
+                'file': 'app.py',
+                'port': 4011,
+                'env_var': 'PORT_AI_COLLAB_CONNECTOR',
+                'description': 'AI Collab Connector Service'
             }
         }
         
@@ -304,6 +311,7 @@ Available services:
   ai_course       - AI Course Service (Port 4007)
   diy_scheduler   - DIY Scheduler Service (Port 4008)
   ai_diy          - AI DIY Service (Port 4009)
+  ai_collab_connector - AI Collab Connector Service (Port 4011)
 
 Examples:
   python start_services.py start-all                        # Start all services except ai_placement

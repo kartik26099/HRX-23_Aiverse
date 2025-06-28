@@ -91,7 +91,7 @@ wrapt==1.17.2
 wsproto==1.2.0
 python-docx==1.1.2
 PyPDF2==3.0.1
-sqlalchemy==2.0.23
+sqlalchemy==2.0.41
 Flask[async]
 sentence-transformers==4.1.0
 huggingface-hub==0.30.2

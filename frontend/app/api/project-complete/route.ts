@@ -42,31 +42,41 @@ Project Type: ${projectData.category || 'software'}
         messages: [
           {
             role: 'user',
-            content: `Analyze this project and extract exactly 5 main  skills that were learned or used(and which we can update on Linkedin or use in resume) for example (Web Development, Mobile Development, Machine Learning, AI Development, Data Science, Programming, Problem Solving, etc.). 
+            content: `Extract exactly 5 professional technical skills from this project that would be valuable on a resume or LinkedIn profile.
 
-Focus on:
-- Programming languages and frameworks
-- Key technologies and tools
-- Core development concepts
-- Industry-relevant skills
+CRITICAL RULES:
+- Return ONLY skill names, not descriptions or sentences
+- Use industry-standard skill names (e.g., "React", "Node.js", "Machine Learning", "Python", "API Development", "Arduino", "BPSK", "Signal Processing")
+- Avoid verbose descriptions like "Implement real-time communication using Socket.IO" - instead use "Socket.IO" or "Real-time Communication"
+- Focus on technologies, frameworks, programming languages, and core concepts
+- Exclude generic tools like "Computer", "Text Editor", "Internet Access"
+- Each skill should be 1-3 words maximum
 
-IMPORTANT RULES:
-- Return EXACTLY 5 skills, no more, no less
-- Use concise, professional skill names
-- Avoid generic terms like "Basic understanding of..."
-- Don't include project-specific details
-- Don't include tools like "Computer with internet access" or "Text editor"
-- Focus on transferable technical skills
+PROJECT TYPE DETECTION:
+- If this is a HARDWARE/ELECTRONICS project (Arduino, circuits, modulation, BPSK, etc.), focus on hardware skills like "Arduino", "BPSK", "Signal Processing", "Circuit Design", "Electronics"
+- If this is a SOFTWARE project (web apps, mobile apps, etc.), focus on software skills like "React", "Node.js", "Python", "API Development"
+- DO NOT mix hardware and software skills inappropriately
+
+Examples of GOOD skills for HARDWARE projects:
+- Arduino, BPSK, Signal Processing, Circuit Design, Electronics
+
+Examples of GOOD skills for SOFTWARE projects:
+- React, Node.js, MongoDB, API Development, TypeScript
+
+Examples of BAD skills (too verbose):
+- "Implement real-time communication using Socket.IO"
+- "Build a responsive chat interface using ReactJS"
+- "Integrate sensors with a microcontroller"
 
 Project details:
 ${projectDescription}
 
 Return ONLY a comma-separated list of 5 skills, nothing else. Example format:
-JavaScript, React, API Integration, State Management, Responsive Design`
+React, Node.js, MongoDB, API Development, TypeScript`
           }
         ],
-        temperature: 0.2,
-        max_tokens: 150
+        temperature: 0.1,
+        max_tokens: 100
       })
     });
 
@@ -88,12 +98,15 @@ JavaScript, React, API Integration, State Management, Responsive Design`
       .replace(/\.$/, '')
       .trim();
 
+    // Normalize and clean the skills
+    const normalizedSkills = normalizeSkills(skillsList);
+    
     // Validate that we have exactly 5 skills
-    const skillsArray = skillsList.split(',').map((s: string) => s.trim()).filter((s: string) => s);
+    const skillsArray = normalizedSkills.split(',').map((s: string) => s.trim()).filter((s: string) => s);
     
     if (skillsArray.length === 5) {
       console.log('Successfully extracted 5 refined skills:', skillsArray);
-      return skillsList;
+      return normalizedSkills;
     } else {
       console.log(`Expected 5 skills, got ${skillsArray.length}. Using fallback.`);
       return extractSkillsFallback(projectData);
@@ -103,6 +116,221 @@ JavaScript, React, API Integration, State Management, Responsive Design`
     // Fallback to basic skill extraction
     return extractSkillsFallback(projectData);
   }
+}
+
+// Function to normalize and clean skill names
+function normalizeSkills(skillsString: string): string {
+  const skillMappings: { [key: string]: string } = {
+    // Programming Languages
+    'javascript': 'JavaScript',
+    'js': 'JavaScript',
+    'typescript': 'TypeScript',
+    'ts': 'TypeScript',
+    'python': 'Python',
+    'java': 'Java',
+    'c++': 'C++',
+    'c#': 'C#',
+    'php': 'PHP',
+    'ruby': 'Ruby',
+    'go': 'Go',
+    'rust': 'Rust',
+    'swift': 'Swift',
+    'kotlin': 'Kotlin',
+    
+    // Frameworks and Libraries
+    'react': 'React',
+    'reactjs': 'React',
+    'react.js': 'React',
+    'vue': 'Vue.js',
+    'vuejs': 'Vue.js',
+    'angular': 'Angular',
+    'node': 'Node.js',
+    'nodejs': 'Node.js',
+    'node.js': 'Node.js',
+    'express': 'Express.js',
+    'expressjs': 'Express.js',
+    'django': 'Django',
+    'flask': 'Flask',
+    'spring': 'Spring Boot',
+    'springboot': 'Spring Boot',
+    'laravel': 'Laravel',
+    'rails': 'Ruby on Rails',
+    'rubyonrails': 'Ruby on Rails',
+    
+    // Databases
+    'mongodb': 'MongoDB',
+    'mysql': 'MySQL',
+    'postgresql': 'PostgreSQL',
+    'postgres': 'PostgreSQL',
+    'sqlite': 'SQLite',
+    'redis': 'Redis',
+    'firebase': 'Firebase',
+    'supabase': 'Supabase',
+    
+    // Cloud and DevOps
+    'aws': 'AWS',
+    'amazon web services': 'AWS',
+    'azure': 'Azure',
+    'google cloud': 'Google Cloud',
+    'gcp': 'Google Cloud',
+    'docker': 'Docker',
+    'kubernetes': 'Kubernetes',
+    'k8s': 'Kubernetes',
+    'git': 'Git',
+    'github': 'GitHub',
+    'gitlab': 'GitLab',
+    
+    // AI/ML
+    'machine learning': 'Machine Learning',
+    'ml': 'Machine Learning',
+    'artificial intelligence': 'AI',
+    'ai': 'AI',
+    'deep learning': 'Deep Learning',
+    'neural networks': 'Neural Networks',
+    'tensorflow': 'TensorFlow',
+    'pytorch': 'PyTorch',
+    'scikit-learn': 'Scikit-learn',
+    'scikitlearn': 'Scikit-learn',
+    'opencv': 'OpenCV',
+    'numpy': 'NumPy',
+    'pandas': 'Pandas',
+    'matplotlib': 'Matplotlib',
+    'seaborn': 'Seaborn',
+    
+    // Web Technologies
+    'html': 'HTML',
+    'css': 'CSS',
+    'html5': 'HTML5',
+    'css3': 'CSS3',
+    'bootstrap': 'Bootstrap',
+    'tailwind': 'Tailwind CSS',
+    'tailwindcss': 'Tailwind CSS',
+    'sass': 'Sass',
+    'scss': 'Sass',
+    'less': 'Less',
+    'jquery': 'jQuery',
+    'ajax': 'AJAX',
+    'rest api': 'REST API',
+    'restapi': 'REST API',
+    'graphql': 'GraphQL',
+    'websocket': 'WebSocket',
+    'socket.io': 'Socket.IO',
+    'socketio': 'Socket.IO',
+    
+    // Mobile Development
+    'react native': 'React Native',
+    'reactnative': 'React Native',
+    'flutter': 'Flutter',
+    'ionic': 'Ionic',
+    'xamarin': 'Xamarin',
+    'android': 'Android Development',
+    'ios': 'iOS Development',
+    
+    // Hardware and Electronics
+    'arduino': 'Arduino',
+    'raspberry pi': 'Raspberry Pi',
+    'raspberrypi': 'Raspberry Pi',
+    'microcontroller': 'Microcontroller Programming',
+    'embedded systems': 'Embedded Systems',
+    'circuit design': 'Circuit Design',
+    'pcb design': 'PCB Design',
+    'electronics': 'Electronics',
+    'digital electronics': 'Digital Electronics',
+    'analog electronics': 'Analog Electronics',
+    'signal processing': 'Signal Processing',
+    'modulation': 'Modulation',
+    'demodulation': 'Demodulation',
+    'bpsk': 'BPSK',
+    'qpsk': 'QPSK',
+    'ask': 'ASK',
+    'fsk': 'FSK',
+    'psk': 'PSK',
+    'qam': 'QAM',
+    'rf': 'RF Design',
+    'radio frequency': 'RF Design',
+    'wireless communication': 'Wireless Communication',
+    'telecommunications': 'Telecommunications',
+    'communication systems': 'Communication Systems',
+    'digital communication': 'Digital Communication',
+    'analog communication': 'Analog Communication',
+    'antenna design': 'Antenna Design',
+    'antenna': 'Antenna Design',
+    'sensor': 'Sensor Integration',
+    'sensors': 'Sensor Integration',
+    'iot': 'IoT',
+    'internet of things': 'IoT',
+    'fpga': 'FPGA',
+    'verilog': 'Verilog',
+    'vhdl': 'VHDL',
+    'hardware description language': 'HDL',
+    'hdl': 'HDL',
+    
+    // Other Technologies
+    'blockchain': 'Blockchain',
+    'ethereum': 'Ethereum',
+    'solidity': 'Solidity',
+    'web3': 'Web3',
+    
+    // Development Concepts
+    'api development': 'API Development',
+    'api integration': 'API Integration',
+    'responsive design': 'Responsive Design',
+    'user experience': 'UX Design',
+    'user interface': 'UI Design',
+    'ui/ux': 'UI/UX Design',
+    'ux/ui': 'UI/UX Design',
+    'state management': 'State Management',
+    'version control': 'Version Control',
+    'agile': 'Agile Development',
+    'scrum': 'Scrum',
+    'test driven development': 'TDD',
+    'tdd': 'TDD',
+    'continuous integration': 'CI/CD',
+    'cicd': 'CI/CD',
+    'devops': 'DevOps',
+    'microservices': 'Microservices',
+    'serverless': 'Serverless',
+    'full stack': 'Full Stack Development',
+    'fullstack': 'Full Stack Development',
+    'frontend': 'Frontend Development',
+    'backend': 'Backend Development',
+    'web development': 'Web Development',
+    'mobile development': 'Mobile Development',
+    'data science': 'Data Science',
+    'data analysis': 'Data Analysis',
+    'data visualization': 'Data Visualization',
+    'problem solving': 'Problem Solving',
+    'algorithms': 'Algorithms',
+    'data structures': 'Data Structures',
+    'object oriented programming': 'OOP',
+    'oop': 'OOP',
+    'functional programming': 'Functional Programming',
+    'design patterns': 'Design Patterns'
+  };
+
+  // Split skills and normalize each one
+  const skills = skillsString.split(',').map(skill => {
+    const trimmedSkill = skill.trim().toLowerCase();
+    
+    // Check if we have a direct mapping
+    if (skillMappings[trimmedSkill]) {
+      return skillMappings[trimmedSkill];
+    }
+    
+    // More precise partial matching - only match if the skill contains the key as a whole word
+    for (const [key, value] of Object.entries(skillMappings)) {
+      // Use word boundaries to avoid false matches
+      const wordBoundaryPattern = new RegExp(`\\b${key}\\b`, 'i');
+      if (wordBoundaryPattern.test(trimmedSkill)) {
+        return value;
+      }
+    }
+    
+    // If no mapping found, capitalize the first letter of each word
+    return skill.trim().replace(/\b\w/g, l => l.toUpperCase());
+  });
+
+  return skills.join(', ');
 }
 
 // Fallback function to extract skills without AI
@@ -122,22 +350,118 @@ function extractSkillsFallback(projectData: any) {
     fallbackSkills.push(...objectives);
   }
   
-  // Add domain-specific skills based on project type
-  if (projectData.category === 'software' || projectData.domain?.toLowerCase().includes('web')) {
+  // Extract from tools array
+  if (projectData.tools && Array.isArray(projectData.tools)) {
+    const tools = projectData.tools.slice(0, 2); // Take first 2
+    fallbackSkills.push(...tools);
+  }
+  
+  // Extract from prerequisites
+  if (projectData.prerequisites && Array.isArray(projectData.prerequisites)) {
+    const prereqs = projectData.prerequisites.slice(0, 2); // Take first 2
+    fallbackSkills.push(...prereqs);
+  }
+  
+  // Add domain-specific skills based on project type and domain
+  const domain = projectData.domain?.toLowerCase() || '';
+  const category = projectData.category?.toLowerCase() || '';
+  const title = projectData.title?.toLowerCase() || '';
+  const overview = projectData.projectOverview?.toLowerCase() || '';
+  
+  // Check for hardware/electronics projects first
+  const hardwareKeywords = [
+    'arduino', 'raspberry pi', 'microcontroller', 'circuit', 'electronics', 
+    'hardware', 'sensor', 'iot', 'embedded', 'fpga', 'verilog', 'vhdl',
+    'modulation', 'demodulation', 'bpsk', 'qpsk', 'ask', 'fsk', 'psk',
+    'rf', 'radio frequency', 'wireless', 'communication', 'antenna',
+    'signal processing', 'digital electronics', 'analog electronics'
+  ];
+  
+  const isHardwareProject = hardwareKeywords.some(keyword => 
+    domain.includes(keyword) || title.includes(keyword) || overview.includes(keyword)
+  );
+  
+  if (isHardwareProject) {
+    // Add hardware-specific skills
+    if (domain.includes('arduino') || title.includes('arduino') || overview.includes('arduino')) {
+      if (!fallbackSkills.some(s => s.toLowerCase().includes('arduino'))) {
+        fallbackSkills.push('Arduino');
+      }
+    }
+    
+    if (domain.includes('modulation') || domain.includes('demodulation') || 
+        title.includes('modulation') || title.includes('demodulation') ||
+        overview.includes('modulation') || overview.includes('demodulation')) {
+      if (!fallbackSkills.some(s => s.toLowerCase().includes('modulation'))) {
+        fallbackSkills.push('Modulation');
+      }
+      if (!fallbackSkills.some(s => s.toLowerCase().includes('demodulation'))) {
+        fallbackSkills.push('Demodulation');
+      }
+    }
+    
+    if (domain.includes('bpsk') || title.includes('bpsk') || overview.includes('bpsk')) {
+      if (!fallbackSkills.some(s => s.toLowerCase().includes('bpsk'))) {
+        fallbackSkills.push('BPSK');
+      }
+    }
+    
+    if (domain.includes('signal') || title.includes('signal') || overview.includes('signal')) {
+      if (!fallbackSkills.some(s => s.toLowerCase().includes('signal'))) {
+        fallbackSkills.push('Signal Processing');
+      }
+    }
+    
+    if (domain.includes('communication') || title.includes('communication') || overview.includes('communication')) {
+      if (!fallbackSkills.some(s => s.toLowerCase().includes('communication'))) {
+        fallbackSkills.push('Communication Systems');
+      }
+    }
+    
+    if (domain.includes('electronics') || title.includes('electronics') || overview.includes('electronics')) {
+      if (!fallbackSkills.some(s => s.toLowerCase().includes('electronics'))) {
+        fallbackSkills.push('Electronics');
+      }
+    }
+    
+    if (domain.includes('circuit') || title.includes('circuit') || overview.includes('circuit')) {
+      if (!fallbackSkills.some(s => s.toLowerCase().includes('circuit'))) {
+        fallbackSkills.push('Circuit Design');
+      }
+    }
+    
+    // Don't add software skills for hardware projects
+    return normalizeSkills(fallbackSkills.join(', '));
+  }
+  
+  // Software project skills (only if not hardware)
+  if (category === 'software' || domain.includes('web') || domain.includes('frontend') || domain.includes('backend')) {
     if (!fallbackSkills.some(s => s.toLowerCase().includes('web'))) {
       fallbackSkills.push('Web Development');
     }
   }
   
-  if (projectData.domain?.toLowerCase().includes('ai') || projectData.domain?.toLowerCase().includes('machine learning')) {
+  if (domain.includes('ai') || domain.includes('machine learning') || domain.includes('ml')) {
     if (!fallbackSkills.some(s => s.toLowerCase().includes('ai') || s.toLowerCase().includes('machine'))) {
       fallbackSkills.push('Machine Learning');
     }
   }
   
-  if (projectData.domain?.toLowerCase().includes('mobile')) {
+  if (domain.includes('mobile') || domain.includes('app')) {
     if (!fallbackSkills.some(s => s.toLowerCase().includes('mobile'))) {
       fallbackSkills.push('Mobile Development');
+    }
+  }
+  
+  if (domain.includes('data') || domain.includes('analytics')) {
+    if (!fallbackSkills.some(s => s.toLowerCase().includes('data'))) {
+      fallbackSkills.push('Data Analysis');
+    }
+  }
+  
+  if (domain.includes('iot') || domain.includes('arduino') || domain.includes('raspberry')) {
+    if (!fallbackSkills.some(s => s.toLowerCase().includes('iot'))) {
+      fallbackSkills.push('IoT');
     }
   }
   
@@ -145,8 +469,11 @@ function extractSkillsFallback(projectData: any) {
   const uniqueSkills = [...new Set(fallbackSkills)];
   const limitedSkills = uniqueSkills.slice(0, 5);
   
-  console.log('Fallback skills extracted:', limitedSkills);
-  return limitedSkills.join(', ');
+  // Normalize the skills using the same function
+  const normalizedSkills = normalizeSkills(limitedSkills.join(', '));
+  
+  console.log('Fallback skills extracted:', normalizedSkills.split(', '));
+  return normalizedSkills;
 }
 
 export async function POST(request: NextRequest) {

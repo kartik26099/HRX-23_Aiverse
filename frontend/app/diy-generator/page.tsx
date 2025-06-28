@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -121,6 +121,14 @@ interface ProjectRoadmap {
     milestone?: boolean;
     duration?: string;
   }[]
+  // Emotion detection related fields
+  moodDetected?: string
+  moodAdjustment?: {
+    message: string
+    adjustment: string
+    difficulty_change?: number
+  }
+  adjustmentMessage?: string
 }
 
 interface ApiResponse {
@@ -189,6 +197,33 @@ interface ApiResponse {
     description?: string
     error?: string
   }
+  // Emotion detection response fields
+  emotion_used?: string
+}
+
+interface EmotionResponse {
+  success: boolean
+  emotion?: string
+  confidence?: number
+  detection_count?: number
+  total_detections?: number
+  mood_adjustment?: {
+    message: string
+    adjustment: string
+    difficulty_change?: number
+  }
+  message?: string
+  error?: string
+}
+
+// Add new interface for continuous emotion detection
+interface ContinuousEmotionResponse {
+  success: boolean
+  emotion?: string
+  confidence?: number
+  should_show_popup?: boolean
+  message?: string
+  error?: string
 }
 
 export default function DIYGeneratorPage() {
@@ -205,6 +240,24 @@ export default function DIYGeneratorPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Emotion detection state variables
+  const [isCapturingEmotion, setIsCapturingEmotion] = useState(false)
+  const [detectedEmotion, setDetectedEmotion] = useState<string | null>(null)
+  const [emotionConfidence, setEmotionConfidence] = useState<number | null>(null)
+  const [showEmotionPopup, setShowEmotionPopup] = useState(false)
+  const [emotionMessage, setEmotionMessage] = useState<string>("")
+  const [isAdjustingProject, setIsAdjustingProject] = useState(false)
+  
+  // Add new state variables for continuous emotion detection
+  const [isEmotionDetectionActive, setIsEmotionDetectionActive] = useState(false)
+  const [emotionDetectionInterval, setEmotionDetectionInterval] = useState<NodeJS.Timeout | null>(null)
+  const [currentEmotion, setCurrentEmotion] = useState<string | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [isWebcamActive, setIsWebcamActive] = useState(false)
+  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null)
+
   const [projectSuggestions] = useState([
     "Build a Weather App",
     "Create a Personal Portfolio",
@@ -310,7 +363,7 @@ export default function DIYGeneratorPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.topic.trim() || !formData.availableHours) {
-      toast.error("Please fill in the project topic and available hours.")
+      toast.error("Please fill in the topic and available hours.")
       return
     }
 
@@ -380,6 +433,10 @@ export default function DIYGeneratorPage() {
         flowchart: data.flowchart || undefined,
         userProfileUsed: data.project_data?.user_profile_used || null,
         timeline: data.project_data?.timeline || [],
+        // Emotion detection related fields
+        moodDetected: data.project_data?.mood_detected || "",
+        moodAdjustment: data.project_data?.mood_adjustment || { message: "", adjustment: "" },
+        adjustmentMessage: data.project_data?.adjustment_message || "",
       }
       
       // Debug: Log the tools and materials data
@@ -410,6 +467,11 @@ export default function DIYGeneratorPage() {
       }
       
       toast.success("Your personalized project roadmap has been created successfully.")
+      
+      // Start continuous emotion detection after project generation
+      console.log("Starting continuous emotion detection after project generation...");
+      await startContinuousEmotionDetection();
+      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred'
       setError(errorMessage)
@@ -678,6 +740,502 @@ export default function DIYGeneratorPage() {
     }
   };
 
+  // Emotion detection functions
+  const checkEmotionDetectorStatus = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/emotion-detector-status`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.emotion_detector_available;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking emotion detector status:', error);
+      return false;
+    }
+  };
+
+  const captureEmotion = async () => {
+    setIsCapturingEmotion(true);
+    setError(null);
+
+    try {
+      // Check if emotion detector is available
+      const isAvailable = await checkEmotionDetectorStatus();
+      if (!isAvailable) {
+        toast.error("Emotion detection is not available. Please try again later.");
+        return null;
+      }
+
+      // Show camera permission request
+      toast.info("Camera access required for emotion detection. Please allow camera permissions.");
+
+      const response = await fetch(`${BACKEND_URL}/api/capture-emotion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ capture_duration: 3 }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: EmotionResponse = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to capture emotion');
+      }
+
+      console.log('Emotion detected:', data);
+      
+      setDetectedEmotion(data.emotion || null);
+      setEmotionConfidence(data.confidence || null);
+      setEmotionMessage(data.message || "");
+      
+      return data;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to capture emotion';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      return null;
+    } finally {
+      setIsCapturingEmotion(false);
+    }
+  };
+
+  const generateAdjustedProject = async (emotion: string) => {
+    setIsAdjustingProject(true);
+    setError(null);
+
+    try {
+      const skillLevel = getExperienceLabel(formData.experienceLevel[0]).toLowerCase();
+      
+      // Fetch user profile data if user is signed in
+      let userProfile = null;
+      if (isSignedIn && user) {
+        userProfile = await fetchUserProfile();
+      }
+
+      const requestData = {
+        topic: formData.topic,
+        available_time: `${formData.availableHours} hours`,
+        skill_level: skillLevel,
+        category: formData.category,
+        user_description: formData.userDescription,
+        youtube_url: formData.youtubeUrl || "",
+        user_profile: userProfile || {},
+        emotion: emotion, // Include the detected emotion
+      };
+
+      console.log('Generating adjusted project with emotion:', emotion);
+
+      const response = await fetch(`${BACKEND_URL}/api/generate-roadmap-with-mood`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: ApiResponse = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate adjusted roadmap');
+      }
+
+      const transformedRoadmap: ProjectRoadmap = {
+        title: data.project_data?.project_title || `DIY Project: ${formData.topic}`,
+        totalDuration: data.project_data?.estimated_time || `${formData.availableHours} hours`,
+        experienceLevel: data.assessed_skill_level || skillLevel,
+        days: parseProjectRoadmap(data.project_data?.project_roadmap || "", data.project_data?.phase_videos || {}),
+        materials: parseList(data.project_data?.tools_and_materials || ""),
+        tools: parseList(data.project_data?.tools_and_materials || ""),
+        prerequisites: parseList(data.project_data?.prerequisites || ""),
+        learningObjectives: parseList(data.project_data?.learning_objectives || ""),
+        commonPitfalls: data.project_data?.common_pitfalls_and_troubleshooting || "",
+        successCriteria: data.project_data?.success_criteria || "",
+        nextSteps: data.project_data?.next_steps_and_extensions || "",
+        datasets: data.project_data?.datasets || [],
+        isMlProject: data.project_data?.is_ml_project || false,
+        videos: data.videos || [],
+        knowledgeAssessment: data.knowledge_assessment || "",
+        phaseVideos: data.project_data?.phase_videos || {},
+        projectOverview: data.project_data?.project_overview || "",
+        domain: data.project_data?.domain || "",
+        templatesHints: data.project_data?.templates_hints || "",
+        githubTemplates: data.github_templates || { 
+          repositories: [], 
+          tools: { type: 'software', tools: [], description: "" } 
+        },
+        hardwareSuggestions: data.hardware_suggestions || undefined,
+        softwareTools: data.software_tools || undefined,
+        flowchart: data.flowchart || undefined,
+        userProfileUsed: data.project_data?.user_profile_used || null,
+        timeline: data.project_data?.timeline || [],
+        // Emotion detection related fields
+        moodDetected: data.project_data?.mood_detected || emotion,
+        moodAdjustment: data.project_data?.mood_adjustment || { message: "", adjustment: "" },
+        adjustmentMessage: data.project_data?.adjustment_message || "",
+      };
+
+      setRoadmap(transformedRoadmap);
+      
+      // Generate flowchart for the adjusted project
+      try {
+        const flowchartResponse = await fetch(`${BACKEND_URL}/api/generate-flowchart`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_data: transformedRoadmap }),
+        });
+        
+        if (flowchartResponse.ok) {
+          const flowchartData = await flowchartResponse.json();
+          if (flowchartData.success) {
+            setRoadmap(prev => prev ? { ...prev, flowchart: flowchartData } : prev);
+          }
+        }
+      } catch (flowchartError) {
+        console.error('Failed to generate flowchart:', flowchartError);
+      }
+
+      toast.success("Your mood-adjusted project roadmap has been created successfully!");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate adjusted project';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsAdjustingProject(false);
+    }
+  };
+
+  // Helper: Start webcam
+  const startWebcam = async () => {
+    console.log("🟢 Starting webcam...")
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      console.log("✅ Webcam stream obtained:", stream)
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        
+        // Add event listeners for video readiness
+        videoRef.current.addEventListener('loadedmetadata', () => {
+          console.log("📹 Video metadata loaded")
+        })
+        
+        videoRef.current.addEventListener('canplay', () => {
+          console.log("🎬 Video can play - ready for capture")
+        })
+        
+        videoRef.current.addEventListener('playing', () => {
+          console.log("▶️  Video is playing")
+        })
+        
+        // Start playing the video
+        await videoRef.current.play()
+        console.log("✅ Video element configured and playing")
+      }
+      
+      setWebcamStream(stream)
+      setIsWebcamActive(true)
+      console.log("✅ Webcam started successfully")
+      return true
+    } catch (err) {
+      console.error("❌ Webcam access failed:", err)
+      toast.error("Could not access webcam. Please allow camera permissions.")
+      setIsWebcamActive(false)
+      return false
+    }
+  }
+
+  // Helper: Stop webcam
+  const stopWebcam = () => {
+    console.log("🟢 Stopping webcam...")
+    if (webcamStream) {
+      webcamStream.getTracks().forEach(track => {
+        console.log("🛑 Stopping track:", track.kind)
+        track.stop()
+      })
+    }
+    setIsWebcamActive(false)
+    setWebcamStream(null)
+    if (videoRef.current) videoRef.current.srcObject = null
+    console.log("✅ Webcam stopped")
+  }
+
+  // Helper: Capture frame and send to backend
+  const captureAndDetectEmotion = async () => {
+    console.log("📸 Capturing frame for emotion detection...")
+    if (!videoRef.current || !canvasRef.current) {
+      console.error("❌ Video or canvas ref not available")
+      return null
+    }
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      console.error("❌ Canvas context not available")
+      return null
+    }
+    
+    // Check if video is ready with more detailed logging
+    console.log(`🎥 Video readyState: ${video.readyState} (0=HAVE_NOTHING, 1=HAVE_METADATA, 2=HAVE_CURRENT_DATA, 3=HAVE_FUTURE_DATA, 4=HAVE_ENOUGH_DATA)`)
+    if (video.readyState < 2) {
+      console.log("⏳ Video not ready yet, readyState:", video.readyState)
+      return null
+    }
+    
+    console.log("🎥 Video ready, drawing frame to canvas...")
+    // Draw current frame
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    console.log("✅ Frame drawn to canvas")
+    
+    // Get base64
+    const imageData = canvas.toDataURL('image/jpeg').split(',')[1]
+    console.log("📤 Image captured, size:", imageData.length, "characters")
+    
+    // Send to backend
+    try {
+      console.log("🚀 Sending image to backend for emotion detection...")
+      const response = await fetch(`${BACKEND_URL}/api/detect-emotion-from-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_data: imageData }),
+      })
+      
+      if (!response.ok) {
+        console.error("❌ Backend response not ok:", response.status, response.statusText)
+        return null
+      }
+      
+      const data: EmotionResponse = await response.json()
+      console.log("🎭 Emotion detection result:", data)
+      
+      if (data.success) {
+        console.log(`😊 Detected emotion: ${data.emotion} (confidence: ${(data.confidence || 0) * 100}%)`)
+        if (data.emotion && ["Fear", "Sad", "Surprise", "Angry"].includes(data.emotion)) {
+          console.log(`⚠️  Negative emotion detected: ${data.emotion}`)
+        }
+      } else {
+        console.error("❌ Emotion detection failed:", data.error)
+      }
+      
+      return data
+    } catch (err) {
+      console.error("❌ Error sending image to backend:", err)
+      return null
+    }
+  }
+
+  // New: Browser-based continuous detection
+  const startContinuousEmotionDetection = async () => {
+    console.log("🟢 Starting continuous emotion detection...")
+    setIsEmotionDetectionActive(true)
+    setError(null)
+    
+    // Check if emotion detector is available on backend
+    try {
+      const statusResponse = await fetch(`${BACKEND_URL}/api/emotion-detector-status`)
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json()
+        if (!statusData.emotion_detector_available) {
+          console.error("❌ Emotion detector not available on backend")
+          toast.error("Emotion detection is not available. Please try again later.")
+          setIsEmotionDetectionActive(false)
+          return
+        }
+        console.log("✅ Emotion detector is available on backend")
+      }
+    } catch (error) {
+      console.error("❌ Error checking emotion detector status:", error)
+      toast.error("Could not connect to emotion detection service.")
+      setIsEmotionDetectionActive(false)
+      return
+    }
+    
+    console.log("🎬 Starting detection loop...")
+    startContinuousDetectionLoop()
+  }
+
+  // Loop for continuous detection
+  const startContinuousDetectionLoop = () => {
+    console.log("🔄 Starting continuous detection loop (every 3 seconds)...")
+    const interval = setInterval(async () => {
+      console.log("🔄 Detection cycle starting...")
+      if (!isEmotionDetectionActive) {
+        console.log("🛑 Detection stopped, clearing interval")
+        clearInterval(interval)
+        return
+      }
+      
+      try {
+        // Use the backend's continuous emotion detection endpoint
+        console.log("📡 Calling backend continuous emotion detection...")
+        const response = await fetch(`${BACKEND_URL}/api/detect-emotion-continuous`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ detection_duration: 1 }),
+        })
+        
+        if (!response.ok) {
+          console.error("❌ Backend response not ok:", response.status, response.statusText)
+          return // Continue the loop even if this detection fails
+        }
+        
+        const data: ContinuousEmotionResponse = await response.json()
+        console.log("🎭 Backend emotion detection result:", data)
+        
+        if (data.success && data.emotion) {
+          console.log(`📊 Updating emotion state: ${data.emotion} (${(data.confidence || 0) * 100}%)`)
+          setCurrentEmotion(data.emotion)
+          setEmotionConfidence(data.confidence || 0)
+          
+          // Debug: Log all the conditions for popup
+          const emotion = data.emotion
+          const confidence = data.confidence || 0
+          const shouldShowPopup = data.should_show_popup || false
+          
+          console.log(`🔍 Popup Debug:`)
+          console.log(`   - Emotion: "${emotion}"`)
+          console.log(`   - Confidence: ${confidence} (${confidence * 100}%)`)
+          console.log(`   - Should show popup: ${shouldShowPopup}`)
+          console.log(`   - Message: ${data.message || 'No message'}`)
+          
+          // Show popup if backend indicates we should
+          if (shouldShowPopup) {
+            console.log(`🚨 NEGATIVE EMOTION DETECTED: ${emotion} (${confidence * 100}%) - SHOWING POPUP!`)
+            console.log(`🚨 Setting detectedEmotion to: ${emotion}`)
+            console.log(`🚨 Setting emotionMessage to: ${data.message || `You look ${emotion.toLowerCase()}. Would you like to adjust your project?`}`)
+            console.log(`🚨 Setting showEmotionPopup to: true`)
+            
+            setDetectedEmotion(emotion)
+            setEmotionMessage(data.message || `You look ${emotion.toLowerCase()}. Would you like to adjust your project?`)
+            setShowEmotionPopup(true)
+            
+            // Add a small delay to ensure state updates
+            setTimeout(() => {
+              console.log(`🚨 After timeout - showEmotionPopup should be: true`)
+              console.log(`🚨 After timeout - detectedEmotion should be: ${emotion}`)
+            }, 100)
+            
+            stopContinuousEmotionDetection()
+          } else {
+            console.log(`✅ Emotion ${emotion} is not negative or confidence too low (${confidence * 100}%)`)
+          }
+        } else {
+          console.log("⚠️  No emotion data received or detection failed")
+          // Don't stop the loop, just continue to next cycle
+        }
+      } catch (error) {
+        console.error("❌ Error in continuous emotion detection:", error)
+        // Don't stop the loop on error, just continue to next cycle
+      }
+    }, 3000)
+    setEmotionDetectionInterval(interval)
+    console.log("✅ Continuous detection loop started")
+  }
+
+  // Stop detection and webcam
+  const stopContinuousEmotionDetection = () => {
+    console.log("🛑 Stopping continuous emotion detection...")
+    setIsEmotionDetectionActive(false)
+    if (emotionDetectionInterval) {
+      console.log("🛑 Clearing detection interval")
+      clearInterval(emotionDetectionInterval)
+      setEmotionDetectionInterval(null)
+    }
+    setCurrentEmotion(null)
+    setEmotionConfidence(null)
+    console.log("✅ Continuous emotion detection stopped")
+  }
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      stopContinuousEmotionDetection()
+    }
+  }, [])
+
+  // Update the emotion popup response handler to handle three options
+  const handleEmotionPopupResponse = async (action: 'change' | 'modify' | 'keep') => {
+    console.log(`🎯 User selected action: ${action} for emotion: ${detectedEmotion}`)
+    setShowEmotionPopup(false);
+    
+    if (action === 'keep') {
+      // User wants to keep the original project
+      console.log("✅ User chose to keep original project")
+      toast.info("Keeping the original project. You can always regenerate later.");
+      stopContinuousEmotionDetection();
+    } else if (detectedEmotion) {
+      if (action === 'change') {
+        // Generate a completely new project
+        console.log("🔄 User chose to change project, generating new project...")
+        await generateAdjustedProject(detectedEmotion);
+      } else if (action === 'modify') {
+        // Modify the current project
+        console.log("🔧 User chose to modify current project...")
+        await modifyCurrentProject(detectedEmotion);
+      }
+    }
+  }
+
+  // Add function to modify current project
+  const modifyCurrentProject = async (emotion: string) => {
+    setIsAdjustingProject(true);
+    setError(null);
+
+    try {
+      if (!roadmap) {
+        throw new Error('No project to modify');
+      }
+
+      const requestData = {
+        current_project: roadmap,
+        emotion: emotion,
+        action: 'modify'
+      };
+
+      console.log('Modifying current project with emotion:', emotion);
+
+      const response = await fetch(`${BACKEND_URL}/api/modify-project-for-mood`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: ApiResponse = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to modify project');
+      }
+
+      // Update the current roadmap with modifications
+      const modifiedRoadmap: ProjectRoadmap = {
+        ...roadmap,
+        title: data.project_data?.project_title || roadmap.title,
+        projectOverview: data.project_data?.project_overview || roadmap.projectOverview,
+        days: data.project_data?.project_roadmap ? parseProjectRoadmap(data.project_data.project_roadmap, data.project_data?.phase_videos || {}) : roadmap.days,
+        moodDetected: emotion,
+        moodAdjustment: data.project_data?.mood_adjustment || { message: "", adjustment: "" },
+        adjustmentMessage: data.project_data?.adjustment_message || "",
+      };
+
+      setRoadmap(modifiedRoadmap);
+      toast.success("Your project has been modified based on your mood!");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to modify project';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsAdjustingProject(false);
+      stopContinuousEmotionDetection();
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -692,6 +1250,113 @@ export default function DIYGeneratorPage() {
           <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
             Create personalized project roadmaps with AI guidance tailored to your skill level and time constraints.
           </p>
+        </div>
+
+        {/* Emotion Detection Status */}
+        {isEmotionDetectionActive && (
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Brain className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-pulse" />
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                  Emotion Detection Active
+                </span>
+                <span className="text-xs text-green-600 dark:text-green-400">
+                  (Backend Camera: Active)
+                </span>
+              </div>
+              {currentEmotion && (
+                <div className="text-xs text-blue-600 dark:text-blue-400">
+                  Current: {currentEmotion} ({(emotionConfidence || 0) * 100}%)
+                </div>
+              )}
+              <Button
+                onClick={() => {
+                  console.log("🛑 User manually stopped emotion detection")
+                  stopContinuousEmotionDetection()
+                }}
+                variant="outline"
+                size="sm"
+                className="text-blue-600 border-blue-300 hover:bg-blue-100"
+              >
+                Stop Detection
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Updated Emotion Detection Popup */}
+        {showEmotionPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-xl">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                  Mood Detected!
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                  {emotionMessage}
+                </p>
+                {detectedEmotion && emotionConfidence && (
+                  <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Detected: <span className="font-medium text-slate-700 dark:text-slate-300">{detectedEmotion}</span>
+                      <br />
+                      Confidence: <span className="font-medium text-slate-700 dark:text-slate-300">{(emotionConfidence * 100).toFixed(1)}%</span>
+                    </p>
+                  </div>
+                )}
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => handleEmotionPopupResponse('change')}
+                    disabled={isAdjustingProject}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {isAdjustingProject ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Generating New Project...
+                      </>
+                    ) : (
+                      "Change Project"
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => handleEmotionPopupResponse('modify')}
+                    disabled={isAdjustingProject}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {isAdjustingProject ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Modifying Project...
+                      </>
+                    ) : (
+                      "Make Changes in This Project"
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => handleEmotionPopupResponse('keep')}
+                    disabled={isAdjustingProject}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Keep Original
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Debug info - remove this after testing */}
+        <div style={{ position: 'fixed', top: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', color: 'white', padding: '10px', fontSize: '12px', zIndex: 9999 }}>
+          <div>showEmotionPopup: {showEmotionPopup ? 'true' : 'false'}</div>
+          <div>detectedEmotion: {detectedEmotion || 'null'}</div>
+          <div>emotionConfidence: {emotionConfidence ? (emotionConfidence * 100).toFixed(1) + '%' : 'null'}</div>
+          <div>isEmotionDetectionActive: {isEmotionDetectionActive ? 'true' : 'false'}</div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
@@ -744,7 +1409,7 @@ export default function DIYGeneratorPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="topic" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      Project Topic
+                      Topic
                     </Label>
                     <Input
                       id="topic"
@@ -1041,9 +1706,17 @@ export default function DIYGeneratorPage() {
               <CardHeader className="border-b border-slate-200 dark:border-slate-700 pb-6 bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-700 dark:to-blue-900/20">
                 <div className="flex items-center justify-between">
                   <div className="space-y-2">
-                    <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200">
-                      {roadmap.title}
-                    </CardTitle>
+                    <div className="flex items-center space-x-3">
+                      <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+                        {roadmap.title}
+                      </CardTitle>
+                      {roadmap.moodDetected && (
+                        <Badge className="bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/20 dark:text-pink-400 dark:border-pink-800 text-xs">
+                          <Brain className="w-3 h-3 mr-1" />
+                          Mood-Adjusted
+                        </Badge>
+                      )}
+                    </div>
                     <CardDescription className="text-slate-600 dark:text-slate-400 text-base">
                       Your personalized project roadmap with step-by-step guidance
                     </CardDescription>
@@ -1124,6 +1797,37 @@ export default function DIYGeneratorPage() {
                       <p className="text-sm text-slate-600 dark:text-slate-400 mt-3 text-center">
                         This project was personalized based on your profile data for better recommendations.
                       </p>
+                    </div>
+                  )}
+
+                  {/* Mood Adjustment Indicator */}
+                  {roadmap.moodDetected && roadmap.moodAdjustment && (
+                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 rounded-xl p-6 border border-pink-200 dark:border-pink-800">
+                      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center space-x-3">
+                        <div className="p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg">
+                          <Brain className="h-5 w-5 text-pink-600 dark:text-pink-400" />
+                        </div>
+                        <span>Mood-Based Adjustment</span>
+                      </h3>
+                      <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-pink-200 dark:border-pink-700">
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <Badge className="bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/20 dark:text-pink-400 dark:border-pink-800">
+                              Detected: {roadmap.moodDetected}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            {roadmap.moodAdjustment.message}
+                          </p>
+                          {roadmap.moodAdjustment.adjustment && (
+                            <div className="p-3 bg-pink-50 dark:bg-pink-900/10 rounded-lg border border-pink-200 dark:border-pink-700">
+                              <p className="text-xs text-pink-700 dark:text-pink-300 font-medium">
+                                Adjustment Applied: {roadmap.moodAdjustment.adjustment}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1382,11 +2086,24 @@ export default function DIYGeneratorPage() {
                                         return null;
                                       }
                                       
-                                      const videoTitle = video.title || video.name || 'Untitled Video';
-                                      const videoChannel = video.channel || video.author || 'Unknown Channel';
-                                      const videoLink = video.link || video.url || '#';
-                                      const videoViews = video.views || '';
-                                      const videoPublishedDate = video.published_date || video.publishedDate || '';
+                                      // Type guard to ensure video has the expected structure
+                                      const videoObj = video as {
+                                        title?: string;
+                                        name?: string;
+                                        channel?: string;
+                                        author?: string;
+                                        link?: string;
+                                        url?: string;
+                                        views?: string;
+                                        published_date?: string;
+                                        publishedDate?: string;
+                                      };
+                                      
+                                      const videoTitle = videoObj.title || videoObj.name || 'Untitled Video';
+                                      const videoChannel = videoObj.channel || videoObj.author || 'Unknown Channel';
+                                      const videoLink = videoObj.link || videoObj.url || '#';
+                                      const videoViews = videoObj.views || '';
+                                      const videoPublishedDate = videoObj.published_date || videoObj.publishedDate || '';
                                       
                                       return (
                                       <Card key={videoIndex} className="border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-colors bg-white dark:bg-slate-700">
@@ -1592,10 +2309,12 @@ export default function DIYGeneratorPage() {
                       {/* Parse and display structured content from suggestions */}
                       {roadmap.hardwareSuggestions.suggestions && (() => {
                         const parsedSections = parseHardwareSuggestions(roadmap.hardwareSuggestions.suggestions)
+                        if (!parsedSections) return null
+                        
                         return (
                           <div className="space-y-6">
                             {/* Circuit Diagram */}
-                            {parsedSections?.circuitDiagram && (
+                            {parsedSections.circuitDiagram && (
                               <div className="bg-white dark:bg-slate-700 rounded-lg p-4 border border-green-200 dark:border-green-700">
                                 <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center space-x-2">
                                   <Zap className="h-4 w-4 text-blue-600" />
@@ -1608,7 +2327,7 @@ export default function DIYGeneratorPage() {
                             )}
 
                             {/* Component List */}
-                            {parsedSections?.componentList && (() => {
+                            {parsedSections.componentList && (() => {
                               const components = parseComponentList(parsedSections.componentList)
                               return components.length > 0 ? (
                                 <div>
@@ -1623,12 +2342,12 @@ export default function DIYGeneratorPage() {
                                           <div className="flex items-center justify-between">
                                             <CardTitle className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                                               {component.name}
-                        </CardTitle>
+                                            </CardTitle>
                                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
                                               {component.cost}
                                             </Badge>
                                           </div>
-                      </CardHeader>
+                                        </CardHeader>
                                         <CardContent className="pt-0">
                                           <div className="space-y-3">
                                             <div className="grid grid-cols-2 gap-3 text-xs">

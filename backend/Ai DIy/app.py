@@ -17,9 +17,18 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Set up logging
+# Set up logging FIRST
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# Import emotion detection module AFTER logger is set up
+try:
+    from emotion_detector import EmotionDetector
+    emotion_detector = EmotionDetector()
+    logger.info("Emotion detector initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize emotion detector: {str(e)}")
+    emotion_detector = None
 
 app = Flask(__name__)
 CORS(app, origins=[
@@ -30,8 +39,8 @@ CORS(app, origins=[
 ])
 
 # Configuration - Use environment variables for security
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', "AIzaSyCqHlRThnjAFm69qzPk7b1uhecSFatSdU0")
-SCRAPINGDOG_API_KEY = os.getenv('SCRAPINGDOG_API_KEY', "685d6b859d31b75e1de18ecc")  
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', "AIzaSyDR_ZeeNfC8VQRy3A4CGIscnsJMY6lasAE")
+SCRAPINGDOG_API_KEY = os.getenv('SCRAPINGDOG_API_KEY', "685e5ad8efda46e6b557c43e")  
 
 # GitHub API credentials
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', "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")
@@ -2457,9 +2466,14 @@ def api_info():
     return jsonify({
         'name': 'AI DIY Project Generator API',
         'version': '1.0.0',
-        'description': 'Backend API for generating AI-powered project roadmaps',
+        'description': 'Backend API for generating AI-powered project roadmaps with emotion detection',
         'endpoints': {
             'POST /api/generate-roadmap': 'Generate project roadmap',
+            'POST /api/generate-roadmap-with-mood': 'Generate project roadmap with mood consideration',
+            'POST /api/capture-emotion': 'Capture emotion from camera',
+            'POST /api/detect-emotion-from-image': 'Detect emotion from image',
+            'POST /api/adjust-project-for-mood': 'Adjust project based on detected emotion',
+            'GET /api/emotion-detector-status': 'Check emotion detector status',
             'POST /api/extract-video-id': 'Extract YouTube video ID',
             'POST /api/get-transcript': 'Get YouTube video transcript',
             'POST /api/available-languages': 'Get available transcript languages',
@@ -2467,6 +2481,12 @@ def api_info():
             'POST /api/generate-flowchart': 'Generate flowchart',
             'GET /health': 'Health check',
             'GET /': 'API information'
+        },
+        'features': {
+            'emotion_detection': 'Facial emotion detection using OpenCV and TensorFlow',
+            'mood_based_adjustment': 'Project difficulty adjustment based on detected emotions',
+            'camera_capture': 'Real-time emotion capture from webcam',
+            'image_processing': 'Emotion detection from uploaded images'
         },
         'frontend_integration': 'This API is designed to work with the Next.js DIY Generator frontend component'
     })
@@ -2659,6 +2679,435 @@ def analyze_project_complexity(project_title, project_overview, roadmap_text, av
             'factors': {'time_based': 2, 'feature_based': 2, 'phase_based': 2},
             'avg_complexity': 2.0
         }
+
+# Emotion Detection API Endpoints
+@app.route('/api/capture-emotion', methods=['POST'])
+def api_capture_emotion():
+    """Capture emotion from camera and return detection results"""
+    try:
+        if not emotion_detector:
+            return jsonify({
+                'success': False,
+                'error': 'Emotion detector not available'
+            }), 500
+        
+        data = request.get_json() or {}
+        capture_duration = data.get('capture_duration', 3)
+        
+        logger.info(f"Starting emotion capture for {capture_duration} seconds")
+        
+        # Capture emotion from camera
+        result = emotion_detector.capture_emotion_from_camera(capture_duration)
+        
+        if result['success']:
+            # Get mood adjustment information
+            mood_adjustment = emotion_detector.get_mood_adjustment(result['emotion'])
+            
+            return jsonify({
+                'success': True,
+                'emotion': result['emotion'],
+                'confidence': result['confidence'],
+                'detection_count': result.get('detection_count', 0),
+                'total_detections': result.get('total_detections', 0),
+                'mood_adjustment': mood_adjustment,
+                'message': mood_adjustment['message']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error'],
+                'emotion': None,
+                'confidence': 0.0
+            })
+            
+    except Exception as e:
+        logger.error(f"Error in capture-emotion API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/detect-emotion-from-image', methods=['POST'])
+def api_detect_emotion_from_image():
+    """Detect emotion from a base64 encoded image"""
+    try:
+        if not emotion_detector:
+            return jsonify({
+                'success': False,
+                'error': 'Emotion detector not available'
+            }), 500
+        
+        data = request.get_json()
+        if not data or 'image_data' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Image data is required'
+            }), 400
+        
+        image_data = data['image_data']
+        
+        # Detect emotion from image
+        result = emotion_detector.detect_emotion_from_image(image_data)
+        
+        if result['success']:
+            # Get mood adjustment information
+            mood_adjustment = emotion_detector.get_mood_adjustment(result['emotion'])
+            
+            return jsonify({
+                'success': True,
+                'emotion': result['emotion'],
+                'confidence': result['confidence'],
+                'all_predictions': result.get('all_predictions', {}),
+                'mood_adjustment': mood_adjustment,
+                'message': mood_adjustment['message']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error'],
+                'emotion': None,
+                'confidence': 0.0
+            })
+            
+    except Exception as e:
+        logger.error(f"Error in detect-emotion-from-image API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/adjust-project-for-mood', methods=['POST'])
+def api_adjust_project_for_mood():
+    """Adjust project based on detected emotion"""
+    try:
+        if not emotion_detector:
+            return jsonify({
+                'success': False,
+                'error': 'Emotion detector not available'
+            }), 500
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No data provided'
+            }), 400
+        
+        project_data = data.get('project_data', {})
+        emotion = data.get('emotion')
+        
+        if not project_data:
+            return jsonify({
+                'success': False,
+                'error': 'Project data is required'
+            }), 400
+        
+        if not emotion:
+            return jsonify({
+                'success': False,
+                'error': 'Emotion is required'
+            }), 400
+        
+        # Adjust project for mood
+        adjusted_project = emotion_detector.adjust_project_for_mood(project_data, emotion)
+        
+        return jsonify({
+            'success': True,
+            'original_project': project_data,
+            'adjusted_project': adjusted_project,
+            'emotion': emotion,
+            'mood_adjustment': emotion_detector.get_mood_adjustment(emotion)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in adjust-project-for-mood API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/generate-roadmap-with-mood', methods=['POST'])
+def api_generate_roadmap_with_mood():
+    """Generate project roadmap with mood consideration"""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+
+        # Extract data from request
+        topic = data.get('topic')
+        available_time = data.get('available_time')
+        skill_level = data.get('skill_level', 'beginner')
+        category = data.get('category', 'software')
+        user_description = data.get('user_description', '')
+        youtube_url = data.get('youtube_url', '')
+        user_profile = data.get('user_profile', {})
+        emotion = data.get('emotion')  # New field for emotion
+        transcript_content = ""
+
+        if not topic or not available_time:
+            return jsonify({"success": False, "error": "Topic and available_time are required"}), 400
+
+        logger.info(f"Generating roadmap with mood for topic: {topic}, category: {category}, emotion: {emotion}")
+        
+        # Assess knowledge level based on description
+        assessed_skill_level, knowledge_assessment = assess_knowledge_level(user_description, skill_level)
+        logger.info(f"Assessed skill level: {assessed_skill_level}")
+
+        if youtube_url:
+            video_id = extract_video_id(youtube_url)
+            if video_id:
+                transcript_content = get_transcript(video_id)
+                if transcript_content:
+                    logger.info(f"Transcript for video {video_id} extracted successfully.")
+                else:
+                    logger.warning(f"Could not get transcript for video {video_id}. Proceeding without it.")
+        
+        keywords = extract_keywords_from_topic(topic, transcript_content, user_description)
+        logger.info(f"Keywords extracted: {keywords}")
+        
+        search_results, all_videos = search_youtube_keywords(keywords)
+        logger.info(f"Found {len(all_videos)} videos")
+        
+        # Generate initial project
+        project_data = generate_project_task(
+            topic=topic,
+            transcript_content=transcript_content,
+            available_time=available_time,
+            user_skill_level=assessed_skill_level,
+            user_description=user_description,
+            youtube_videos=all_videos,
+            knowledge_assessment=knowledge_assessment,
+            category=category,
+            user_profile=user_profile
+        )
+        
+        if not project_data:
+            raise Exception("Failed to generate project data")
+        
+        # Adjust project based on emotion if provided
+        if emotion and emotion_detector:
+            logger.info(f"Adjusting project for emotion: {emotion}")
+            project_data = emotion_detector.adjust_project_for_mood(project_data, emotion)
+        
+        logger.info("Roadmap generated successfully with mood consideration")
+        
+        # Find GitHub templates for software projects only
+        github_templates = None
+        hardware_suggestions = None
+        software_tools = None
+        
+        if category == "software":
+            logger.info("Finding GitHub templates for software project")
+            github_templates = find_github_templates(topic, category, project_data.get('project_title', ''), project_data.get('project_overview', ''))
+            # Extract software tools from project data
+            if project_data.get('software_tools'):
+                software_tools = project_data['software_tools']
+                logger.info(f"Found structured software tools: {len(software_tools.get('tools', []))} tools")
+        elif category == "other":
+            logger.info("Processing other category project")
+            # Extract tools from project data for other category
+            if project_data.get('software_tools'):
+                software_tools = project_data['software_tools']
+                logger.info(f"Found structured other category tools: {len(software_tools.get('tools', []))} tools")
+        elif category == "hardware":
+            logger.info("Generating hardware suggestions for hardware project")
+            hardware_suggestions = suggest_tools(
+                topic, 
+                category, 
+                project_data.get('project_title', ''),
+                project_data.get('project_overview', '')
+            )
+        
+        response_data = {
+            'success': True,
+            'project_data': project_data,
+            'keywords': keywords,
+            'search_results': search_results,
+            'videos': all_videos,
+            'assessed_skill_level': assessed_skill_level,
+            'knowledge_assessment': knowledge_assessment,
+            'emotion_used': emotion
+        }
+        
+        if github_templates:
+            response_data['github_templates'] = github_templates
+        if hardware_suggestions:
+            response_data['hardware_suggestions'] = hardware_suggestions
+        if software_tools:
+            response_data['software_tools'] = software_tools
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logger.error(f"Error in generate_roadmap_with_mood API: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/emotion-detector-status', methods=['GET'])
+def api_emotion_detector_status():
+    """Check if emotion detector is available"""
+    return jsonify({
+        'success': True,
+        'emotion_detector_available': emotion_detector is not None,
+        'message': 'Emotion detector is ready' if emotion_detector else 'Emotion detector not available'
+    })
+
+@app.route('/api/detect-emotion-continuous', methods=['POST'])
+def api_detect_emotion_continuous():
+    """Detect emotion continuously and determine if popup should be shown"""
+    try:
+        if not emotion_detector:
+            return jsonify({
+                'success': False,
+                'error': 'Emotion detector not available'
+            }), 500
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No data provided'
+            }), 400
+        
+        # For continuous detection, we'll use a shorter duration and handle camera access better
+        detection_duration = data.get('detection_duration', 1)  # Default 1 second
+        
+        try:
+            # Capture emotion from camera with better error handling
+            result = emotion_detector.capture_emotion_from_camera(detection_duration)
+            
+            if result['success'] and result['emotion']:
+                emotion = result['emotion']
+                confidence = result['confidence']
+                
+                # Define negative emotions that should trigger popup
+                negative_emotions = ['Fear', 'Sad', 'Surprise', 'Angry']
+                should_show_popup = emotion in negative_emotions and confidence > 0.4
+                
+                # Get mood adjustment message
+                mood_adjustment = emotion_detector.get_mood_adjustment(emotion)
+                
+                logger.info(f"Continuous emotion detection: {emotion} (confidence: {confidence:.3f}, show_popup: {should_show_popup})")
+                
+                return jsonify({
+                    'success': True,
+                    'emotion': emotion,
+                    'confidence': confidence,
+                    'should_show_popup': should_show_popup,
+                    'message': mood_adjustment['message'] if should_show_popup else None
+                })
+            else:
+                # If detection failed, return a neutral response instead of error
+                logger.warning(f"Emotion detection failed: {result.get('error', 'Unknown error')}")
+                return jsonify({
+                    'success': True,
+                    'emotion': 'Neutral',
+                    'confidence': 0.5,
+                    'should_show_popup': False,
+                    'message': None
+                })
+                
+        except Exception as camera_error:
+            logger.error(f"Camera access error: {str(camera_error)}")
+            # Return neutral response instead of error to keep detection running
+            return jsonify({
+                'success': True,
+                'emotion': 'Neutral',
+                'confidence': 0.5,
+                'should_show_popup': False,
+                'message': None
+            })
+            
+    except Exception as e:
+        logger.error(f"Error in detect-emotion-continuous API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/modify-project-for-mood', methods=['POST'])
+def api_modify_project_for_mood():
+    """Modify existing project based on detected emotion"""
+    try:
+        if not emotion_detector:
+            return jsonify({
+                'success': False,
+                'error': 'Emotion detector not available'
+            }), 500
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No data provided'
+            }), 400
+        
+        current_project = data.get('current_project', {})
+        emotion = data.get('emotion')
+        action = data.get('action', 'modify')
+        
+        if not current_project:
+            return jsonify({
+                'success': False,
+                'error': 'Current project data is required'
+            }), 400
+        
+        if not emotion:
+            return jsonify({
+                'success': False,
+                'error': 'Emotion is required'
+            }), 400
+        
+        logger.info(f"Modifying project for emotion: {emotion}, action: {action}")
+        
+        # Get mood adjustment
+        mood_adjustment = emotion_detector.get_mood_adjustment(emotion)
+        
+        # Create modified project data
+        modified_project = current_project.copy()
+        
+        # Apply modifications based on emotion and action
+        if action == 'modify':
+            # Modify the current project
+            if emotion == 'Fear':
+                # Make project more guided and step-by-step
+                modified_project['project_title'] = f"Step-by-Step: {current_project.get('title', 'DIY Project')}"
+                modified_project['project_overview'] = f"This project has been modified to include detailed step-by-step guidance to help you succeed. {current_project.get('projectOverview', '')}"
+                
+            elif emotion == 'Sad':
+                # Make project more fun and engaging
+                modified_project['project_title'] = f"Fun & Engaging: {current_project.get('title', 'DIY Project')}"
+                modified_project['project_overview'] = f"This project has been modified to be more fun and engaging while you learn. {current_project.get('projectOverview', '')}"
+                
+            elif emotion == 'Surprise':
+                # Make project more exciting
+                modified_project['project_title'] = f"Exciting: {current_project.get('title', 'DIY Project')}"
+                modified_project['project_overview'] = f"This project has been modified to be more exciting and keep you engaged. {current_project.get('projectOverview', '')}"
+                
+            elif emotion == 'Angry':
+                # Make project simpler and less frustrating
+                modified_project['project_title'] = f"Simplified: {current_project.get('title', 'DIY Project')}"
+                modified_project['project_overview'] = f"This project has been simplified to reduce complexity and frustration. {current_project.get('projectOverview', '')}"
+        
+        # Add mood information
+        modified_project['mood_detected'] = emotion
+        modified_project['mood_adjustment'] = mood_adjustment
+        modified_project['adjustment_message'] = mood_adjustment['message']
+        
+        return jsonify({
+            'success': True,
+            'project_data': modified_project,
+            'emotion': emotion,
+            'mood_adjustment': mood_adjustment,
+            'message': f'Project modified based on your {emotion.lower()} mood'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in modify-project-for-mood API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 4009))  # Use PORT env var or default to 4009

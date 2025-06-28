@@ -1,0 +1,25 @@
+# Supabase Configuration
+# Get these from your Supabase project settings
+SUPABASE_URL=your_supabase_url_here
+SUPABASE_SERVICE_KEY=your_supabase_service_key_here
+
+# Sentiment Analysis Configuration
+# Choose your preferred method: rule_based, openrouter, huggingface, cohere
+SENTIMENT_METHOD=rule_based
+
+# OpenRouter API (for Llama 3.1 8B model)
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+
+# HuggingFace API (free tier available)
+HUGGINGFACE_API_KEY=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
+
+# Cohere API (free tier available)
+COHERE_API_KEY=lyxfxMY2m3XjbeG4EgGdoO9HojOCoJnN9gHv00Su
+
+# Flask Configuration
+PORT=5001
+FLASK_ENV=development
+FLASK_DEBUG=1
+
+# Optional: Sentiment Analyzer URL (for webhooks)
+SENTIMENT_ANALYZER_URL=http://localhost:5001 

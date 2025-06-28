@@ -186,7 +186,7 @@ export default function DIYEvaluatorPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Upload Project File (Optional)</Label>
+                  <Label>Upload Project File</Label>
                   <div
                     className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
                     onDragOver={handleDragOver}

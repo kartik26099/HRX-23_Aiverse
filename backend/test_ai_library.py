@@ -11,7 +11,7 @@ def test_health():
     """Test health endpoint"""
     print("🔍 Testing health endpoint...")
     try:
-        response = requests.get("http://localhost:4001/health")
+        response = requests.get("http://localhost:4004/health")
         print(f"✅ Health check: {response.status_code}")
         print(f"   Response: {response.json()}")
         return True
@@ -23,7 +23,7 @@ def test_search():
     """Test search endpoint"""
     print("\n🔍 Testing search endpoint...")
     try:
-        response = requests.get("http://localhost:4001/search?query=Artificial%20Intelligence")
+        response = requests.get("http://localhost:4004/search?query=Artificial%20Intelligence")
         print(f"✅ Search: {response.status_code}")
         
         data = response.json()
@@ -48,7 +48,7 @@ def test_cache():
     print("\n🔍 Testing cache functionality...")
     try:
         # Get cache stats
-        response = requests.get("http://localhost:4001/cache/stats")
+        response = requests.get("http://localhost:4004/cache/stats")
         print(f"✅ Cache stats: {response.status_code}")
         cache_data = response.json()
         print(f"   Cache size: {cache_data.get('cache_size')}")
@@ -57,11 +57,11 @@ def test_cache():
         # Test caching by making the same search twice
         print("\n   Testing cache behavior...")
         start_time = time.time()
-        response1 = requests.get("http://localhost:4001/search?query=Test%20Query")
+        response1 = requests.get("http://localhost:4004/search?query=Test%20Query")
         time1 = time.time() - start_time
         
         start_time = time.time()
-        response2 = requests.get("http://localhost:4001/search?query=Test%20Query")
+        response2 = requests.get("http://localhost:4004/search?query=Test%20Query")
         time2 = time.time() - start_time
         
         print(f"   First request: {time1:.3f}s")
@@ -82,14 +82,14 @@ def test_error_handling():
     print("\n🔍 Testing error handling...")
     try:
         # Test with empty query
-        response = requests.get("http://localhost:4001/search")
+        response = requests.get("http://localhost:4004/search")
         print(f"✅ Empty query test: {response.status_code}")
         if response.status_code == 400:
             print("   ✅ Properly handles missing query parameter")
         
         # Test with very long query
         long_query = "A" * 1000
-        response = requests.get(f"http://localhost:4001/search?query={long_query}")
+        response = requests.get(f"http://localhost:4004/search?query={long_query}")
         print(f"✅ Long query test: {response.status_code}")
         
         return True

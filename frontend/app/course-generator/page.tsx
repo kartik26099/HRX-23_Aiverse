@@ -570,9 +570,9 @@ export default function CourseGeneratorPage() {
             </div>
             <div>
               <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                AI Course Generator
+              CourseWeaver
               </h1>
-              <p className="text-lg text-slate-600 dark:text-slate-400 mt-2">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
                 Create personalized learning paths tailored to your goals
               </p>
             </div>

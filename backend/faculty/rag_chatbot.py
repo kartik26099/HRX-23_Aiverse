@@ -15,7 +15,7 @@ load_dotenv()
 
 # OpenRouter setup (same as other services)
 API_URL = os.getenv("LLM_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-API_KEY = os.getenv("LLM_API_KEY", "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")
+API_KEY = os.getenv("LLM_API_KEY", "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")
 MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/llama-3.1-8b-instruct:free")
 
 HEADERS = {
@@ -263,19 +263,34 @@ def add_human_touch(response: str) -> str:
     return response
 
 async def chat_with_documents(message: str, conversation_history: List[ChatMessage] = None) -> ChatResponse:
-    """Chat with documents using RAG approach."""
+    """Chat with documents using RAG approach with document summaries."""
     if conversation_history is None:
         conversation_history = []
     
     # Analyze sentiment to adapt response tone
     sentiment = analyze_sentiment(message)
     
-    # Get available documents for context
+    # Get available documents and their summaries for context
     db = SessionLocal()
     try:
         documents = db.query(Document).all()
-        document_titles = [doc.title for doc in documents]
-        document_context = f"Available documents: {', '.join(document_titles)}" if document_titles else "No documents available"
+        if not documents:
+            return ChatResponse(
+                response="I don't have any documents to reference. Please upload a document first so I can help you with questions about it.",
+                sources=[]
+            )
+        
+        # Collect document summaries and topics
+        document_summaries = []
+        document_titles = []
+        for doc in documents:
+            if doc.summary:
+                document_summaries.append(f"Document: {doc.title}\nSummary: {doc.summary}")
+                document_titles.append(doc.title)
+        
+        document_context = f"Available documents: {', '.join(document_titles)}"
+        summaries_context = "\n\n".join(document_summaries)
+        
     finally:
         db.close()
     
@@ -288,16 +303,20 @@ async def chat_with_documents(message: str, conversation_history: List[ChatMessa
     # Get relevant chunks using the improved query
     relevant_chunks = get_relevant_chunks(improved_query)
     
-    # Prepare system message with tone adaptation based on sentiment and document context
-    system_message = f"""You are a knowledgeable AI faculty assistant with access to the following documents: {document_context}.
+    # Prepare system message with document summaries and tone adaptation
+    system_message = f"""You are a knowledgeable AI faculty assistant with access to the following documents and their summaries:
+
+Document Summaries:
+{summaries_context}
 
 Your role is to:
-1. Answer questions based ONLY on the content of the uploaded documents
-2. If a question cannot be answered from the documents, clearly state that you don't have that information
-3. Provide specific references to document content when possible
-4. Be conversational yet precise, responding as a knowledgeable professor would
-5. Use natural language with occasional pauses and varied sentence structures
-6. If you're unsure about something, express uncertainty naturally
+1. Answer questions based on the content of the uploaded documents and their summaries
+2. Use the document summaries to provide comprehensive context
+3. If a question cannot be answered from the documents, clearly state that you don't have that information
+4. Provide specific references to document content when possible
+5. Be conversational yet precise, responding as a knowledgeable professor would
+6. Use natural language with occasional pauses and varied sentence structures
+7. If you're unsure about something, express uncertainty naturally
 
 Remember: You can only answer questions about the content in the uploaded documents. If someone asks about topics not covered in the documents, politely explain that you don't have that information available."""
     
@@ -319,18 +338,22 @@ Remember: You can only answer questions about the content in the uploaded docume
         # Fallback to traditional approach if async processing fails
         print(f"Error in hierarchical summarization: {str(e)}")
         
-        # Prepare context from chunks
+        # Prepare context from chunks and summaries
         context = "\n\n".join([chunk["content"] for chunk in relevant_chunks])
         
-        # Prepare prompt with context and chain-of-thought guidance
+        # Prepare prompt with context, summaries, and chain-of-thought guidance
         prompt = f"""
-        Answer the following question based on this context from the uploaded documents:
+        Answer the following question based on this context from the uploaded documents and their summaries:
         
-        Context: {context}
+        Document Summaries:
+        {summaries_context}
+        
+        Relevant Document Chunks:
+        {context}
         
         Question: {message}
         
-        Important: Only answer based on the provided context. If the context doesn't contain relevant information, clearly state that you don't have that information in the uploaded documents.
+        Important: Only answer based on the provided context and summaries. If the context doesn't contain relevant information, clearly state that you don't have that information in the uploaded documents.
         
         Think through your response step by step and provide specific references when possible.
         """

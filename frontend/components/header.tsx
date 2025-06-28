@@ -13,7 +13,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu"
-import { Menu, GraduationCap, ChevronDown, X } from "lucide-react"
+import { Menu, Lightbulb, ChevronDown, X } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import {
   SignInButton,
@@ -35,11 +35,11 @@ export function Header() {
   ]
 
   const navigationItems = [
-    { name: "Course Generator", href: "/course-generator", color: "hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950 dark:hover:text-blue-400" },
-    { name: "AI Advisor", href: "/ai-advisor", color: "hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-purple-950 dark:hover:text-purple-400" },
-    { name: "AI Faculty", href: "/ai-faculty", color: "hover:bg-pink-50 hover:text-pink-600 dark:hover:bg-pink-950 dark:hover:text-pink-400" },
-    { name: "Research Helper", href: "/research-helper", color: "hover:bg-cyan-50 hover:text-cyan-600 dark:hover:bg-cyan-950 dark:hover:text-cyan-400" },
-    { name: "Library", href: "/library", color: "hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950 dark:hover:text-emerald-400" },
+    { name: "CourseWeaver", href: "/course-generator", color: "hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950 dark:hover:text-blue-400" },
+    { name: "LearnLens", href: "/ai-advisor", color: "hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-purple-950 dark:hover:text-purple-400" },
+    { name: "EduMentor", href: "/ai-faculty", color: "hover:bg-pink-50 hover:text-pink-600 dark:hover:bg-pink-950 dark:hover:text-pink-400" },
+    { name: "ResearchMate", href: "/research-helper", color: "hover:bg-cyan-50 hover:text-cyan-600 dark:hover:bg-cyan-950 dark:hover:text-cyan-400" },
+    { name: "KnowVault", href: "/library", color: "hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950 dark:hover:text-emerald-400" },
     { name: "Community", href: "/community", color: "hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-950 dark:hover:text-orange-400" },
   ]
 
@@ -64,10 +64,10 @@ export function Header() {
           {/* Clean Logo Section */}
           <Link href="/" className="flex items-center space-x-3 group">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-sm">
-              <GraduationCap className="h-6 w-6 text-primary-foreground" />
+              <Lightbulb className="h-6 w-6 text-primary-foreground" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-xl text-foreground">EduAI</span>
+              <span className="font-bold text-xl text-foreground">DoLab</span>
               <span className="text-xs text-muted-foreground">AI Learning Platform</span>
             </div>
           </Link>
@@ -175,9 +175,9 @@ export function Header() {
                   <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                        <GraduationCap className="h-5 w-5 text-primary-foreground" />
+                        <Lightbulb className="h-5 w-5 text-primary-foreground" />
                       </div>
-                      <span className="font-bold text-lg">EduAI</span>
+                      <span className="font-bold text-lg">DoLab</span>
                     </div>
                     <Button
                       variant="ghost"

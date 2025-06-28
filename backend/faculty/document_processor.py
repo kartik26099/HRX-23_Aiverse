@@ -7,9 +7,26 @@ from sentence_transformers import SentenceTransformer
 from db_setup import SessionLocal, Document, DocumentChunk
 from db_setup import Base, engine
 from functools import lru_cache
+import requests
+from dotenv import load_dotenv
 
 # Initialize database tables
 Base.metadata.create_all(engine)
+
+# Load environment variables
+load_dotenv()
+
+# OpenRouter setup for summarization
+API_URL = os.getenv("LLM_API_URL", "https://openrouter.ai/api/v1/chat/completions")
+API_KEY = os.getenv("LLM_API_KEY", "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")
+MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/llama-3.1-8b-instruct:free")
+
+HEADERS = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json",
+    "HTTP-Referer": "http://localhost:8000",
+    "X-Title": "AI Faculty Document Processor"
+}
 
 # Load embedding model (using sentence-transformers instead of OpenAI)
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -106,7 +123,7 @@ def generate_embedding(text: str) -> List[float]:
         return [0.0] * 384  # Default dimension for 'all-MiniLM-L6-v2'
 
 def process_document(file: BinaryIO, filename: str, title: str) -> int:
-    """Process document, extract text, and store chunks without using Pinecone."""
+    """Process document, extract text, generate summary, and store chunks without using Pinecone."""
     try:
         print(f"Starting to process document: {filename}")
         print(f"Document title: {title}")
@@ -116,11 +133,27 @@ def process_document(file: BinaryIO, filename: str, title: str) -> int:
         text = extract_text_from_file(file, filename)
         print(f"Extracted text length: {len(text)} characters")
         
+        # Generate document summary
+        print("Generating document summary...")
+        summary = generate_document_summary(text, title)
+        print(f"Generated summary length: {len(summary)} characters")
+        
+        # Extract key topics from summary
+        print("Extracting key topics...")
+        topics = extract_key_topics_from_summary(summary)
+        print(f"Extracted topics: {topics}")
+        
         # Create document in database
         print("Creating document in database...")
         db = SessionLocal()
         try:
-            document = Document(title=title, content=text)
+            import json
+            document = Document(
+                title=title, 
+                content=text,
+                summary=summary,
+                topics=json.dumps(topics)
+            )
             db.add(document)
             db.commit()
             db.refresh(document)
@@ -186,3 +219,103 @@ def cosine_similarity(vec1, vec2):
     if magnitude1 * magnitude2 == 0:
         return 0
     return dot_product / (magnitude1 * magnitude2)
+
+def generate_document_summary(document_content: str, document_title: str) -> str:
+    """Generate a comprehensive summary of the document for better RAG performance."""
+    
+    # Truncate content if too long (keep first 8000 characters for summary)
+    content_for_summary = document_content[:8000]
+    
+    system_prompt = """You are an expert at creating comprehensive document summaries for educational purposes.
+    
+    Your task is to create a detailed summary that includes:
+    1. Main topics and themes covered
+    2. Key concepts and definitions
+    3. Important facts and data points
+    4. Structure and organization of the content
+    5. Learning objectives and takeaways
+    
+    The summary should be well-structured and comprehensive enough to answer questions about the document content.
+    """
+    
+    user_prompt = f"""Please create a comprehensive summary of this document:
+    
+    Title: {document_title}
+    
+    Content:
+    {content_for_summary}
+    
+    Create a detailed summary that captures all important information and can be used to answer questions about the document content."""
+    
+    try:
+        data = {
+            "model": MODEL_NAME,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "temperature": 0.3,
+            "max_tokens": 1500
+        }
+        
+        response = requests.post(API_URL, headers=HEADERS, json=data)
+        response.raise_for_status()
+        result = response.json()
+        
+        summary = result["choices"][0]["message"]["content"].strip()
+        return summary
+        
+    except Exception as e:
+        print(f"Error generating document summary: {str(e)}")
+        # Fallback: create a basic summary
+        return f"Document Summary for '{document_title}': This document contains educational content covering various topics. The content has been processed and is available for questions and quiz generation."
+
+def extract_key_topics_from_summary(summary: str) -> List[str]:
+    """Extract key topics from the document summary for better categorization."""
+    
+    system_prompt = """You are an expert at identifying key educational topics from document summaries.
+    Extract 3-5 main topics that would be useful for categorization and quiz generation.
+    Return only a JSON array of topic strings."""
+    
+    user_prompt = f"""From this document summary, extract 3-5 key educational topics:
+    
+    {summary}
+    
+    Return only a JSON array of topic strings. Example: ["Topic 1", "Topic 2", "Topic 3"]"""
+    
+    try:
+        data = {
+            "model": MODEL_NAME,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 300,
+            "response_format": {"type": "json_object"}
+        }
+        
+        response = requests.post(API_URL, headers=HEADERS, json=data)
+        response.raise_for_status()
+        result = response.json()
+        
+        response_text = result["choices"][0]["message"]["content"]
+        
+        # Parse JSON response
+        import json
+        try:
+            topics_data = json.loads(response_text)
+            if isinstance(topics_data, list):
+                return topics_data
+            elif isinstance(topics_data, dict) and "topics" in topics_data:
+                return topics_data["topics"]
+            else:
+                return ["General Knowledge"]
+        except json.JSONDecodeError:
+            # Fallback: extract topics using regex
+            topics = re.findall(r'"([^"]+)"', response_text)
+            return topics if topics else ["General Knowledge"]
+            
+    except Exception as e:
+        print(f"Error extracting topics: {str(e)}")
+        return ["General Knowledge"]

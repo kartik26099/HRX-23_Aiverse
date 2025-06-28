@@ -293,15 +293,19 @@ def generate_detailed_explanation(question: str, correct_answer: str, user_answe
         finally:
             db.close()
     
-    system_prompt = """You are an expert educator providing detailed explanations for quiz questions.
-    Your explanations should be:
-    1. Clear and educational
-    2. Helpful for learning
-    3. Specific to the question and topic
-    4. Encouraging and constructive
+    system_prompt = """You are an expert educator providing clear, structured explanations for quiz questions.
     
-    If the answer is incorrect, explain why the chosen answer is wrong and why the correct answer is right.
-    If the answer is correct, provide additional context and reinforcement.
+    Your explanations must be well-formatted and user-friendly with the following structure:
+    
+    1. **Answer Status**: Start with "✅ Correct!" or "❌ Incorrect" 
+    2. **Quick Summary**: One sentence explaining if they got it right or wrong
+    3. **Detailed Explanation**: Clear explanation of why the answer is correct/incorrect
+    4. **Key Points**: 2-3 bullet points highlighting important concepts
+    5. **Learning Tip**: A helpful tip for understanding the topic better
+    
+    IMPORTANT: Do NOT use markdown formatting like **bold** or ## headers. 
+    Just use plain text with clear sections separated by line breaks.
+    Keep explanations concise but educational. Be encouraging and constructive.
     """
     
     user_prompt = f"""Question: {question}
@@ -312,7 +316,7 @@ Is Correct: {'Yes' if is_correct else 'No'}
 
 {f'Document Context: {context[:1000]}' if context else ''}
 
-Please provide a detailed explanation that helps the student understand the concept better."""
+Please provide a well-structured explanation following the format specified in the system prompt."""
 
     # Try multiple times with exponential backoff for rate limiting
     max_retries = 3
@@ -327,7 +331,7 @@ Please provide a detailed explanation that helps the student understand the conc
                     {"role": "user", "content": user_prompt}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 300
+                "max_tokens": 500
             }
             
             response = requests.post(API_URL, headers=HEADERS, json=data)
@@ -346,7 +350,17 @@ Please provide a detailed explanation that helps the student understand the conc
             response.raise_for_status()
             result = response.json()
             
-            return result["choices"][0]["message"]["content"].strip()
+            explanation = result["choices"][0]["message"]["content"].strip()
+            
+            # Clean up the explanation to remove extra markdown formatting
+            explanation = clean_explanation_formatting(explanation)
+            
+            # Ensure the explanation has proper structure
+            if not explanation.startswith(('✅', '❌')):
+                # If the AI didn't follow the format, create a structured version
+                return create_structured_explanation(question, correct_answer, user_answer, is_correct, topic, explanation)
+            
+            return explanation
             
         except Exception as e:
             print(f"Error generating explanation (attempt {attempt + 1}): {str(e)}")
@@ -354,12 +368,103 @@ Please provide a detailed explanation that helps the student understand the conc
                 return generate_fallback_explanation(question, correct_answer, user_answer, is_correct, topic)
             time.sleep(base_delay * (2 ** attempt))
 
+def clean_explanation_formatting(text: str) -> str:
+    """Clean up explanation formatting to remove extra markdown and ensure clean output."""
+    
+    # Remove extra asterisks from bold text (convert **text** to text)
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
+    
+    # Remove markdown headers (convert ## Header to Header)
+    text = re.sub(r'^##\s*', '', text, flags=re.MULTILINE)
+    
+    # Remove extra bullet point formatting
+    text = re.sub(r'^\*\s*', '• ', text, flags=re.MULTILINE)
+    
+    # Remove any remaining markdown code blocks
+    text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
+    text = re.sub(r'`.*?`', '', text)
+    
+    # Clean up extra whitespace
+    text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)
+    text = text.strip()
+    
+    return text
+
+def create_structured_explanation(question: str, correct_answer: str, user_answer: str, is_correct: bool, topic: str, raw_explanation: str) -> str:
+    """Create a structured explanation from raw AI output."""
+    
+    status_icon = "✅" if is_correct else "❌"
+    status_text = "Correct!" if is_correct else "Incorrect"
+    
+    if is_correct:
+        summary = f"Great job! You correctly identified that {correct_answer} is the right answer."
+        key_points = [
+            f"Understanding {topic} concepts is crucial for success",
+            f"The correct answer demonstrates proper knowledge of the subject",
+            f"Keep up the excellent work in this area"
+        ]
+        learning_tip = f"To strengthen your knowledge of {topic}, try applying these concepts to real-world scenarios."
+    else:
+        summary = f"The correct answer is {correct_answer}. Your answer '{user_answer}' was not correct."
+        key_points = [
+            f"Review the fundamental concepts of {topic}",
+            f"Pay attention to the specific details in the question",
+            f"Consider how different options relate to the topic"
+        ]
+        learning_tip = f"To improve your understanding of {topic}, focus on the core principles and practice with similar questions."
+    
+    structured_explanation = f"""{status_icon} {status_text}
+
+Summary: {summary}
+
+Detailed Explanation:
+{raw_explanation}
+
+Key Points:
+{chr(10).join([f"• {point}" for point in key_points])}
+
+Learning Tip: {learning_tip}"""
+    
+    return structured_explanation
+
 def generate_fallback_explanation(question: str, correct_answer: str, user_answer: str, is_correct: bool, topic: str) -> str:
     """Generate a fallback explanation when API calls fail."""
+    
+    status_icon = "✅" if is_correct else "❌"
+    status_text = "Correct!" if is_correct else "Incorrect"
+    
     if is_correct:
-        return f"Correct! {correct_answer} is the right answer. Well done on understanding this concept about {topic}!"
+        summary = f"Excellent! You correctly answered: {correct_answer}"
+        explanation = f"You demonstrated a good understanding of {topic}. The correct answer shows that you have grasped the key concepts."
+        key_points = [
+            f"Understanding {topic} is essential for success",
+            f"Your answer demonstrates proper knowledge",
+            f"Keep practicing to strengthen your skills"
+        ]
+        learning_tip = f"To excel further in {topic}, try applying these concepts to practical scenarios."
     else:
-        return f"Incorrect. The correct answer is {correct_answer}. Review the material on {topic} to better understand this concept."
+        summary = f"The correct answer is: {correct_answer}"
+        explanation = f"Your answer '{user_answer}' was not correct. The correct answer is {correct_answer}. This question tests your understanding of {topic}."
+        key_points = [
+            f"Review the core concepts of {topic}",
+            f"Pay attention to question details",
+            f"Practice with similar questions to improve"
+        ]
+        learning_tip = f"Focus on the fundamental principles of {topic} and how they apply to different scenarios."
+    
+    fallback_explanation = f"""{status_icon} {status_text}
+
+Summary: {summary}
+
+Detailed Explanation:
+{explanation}
+
+Key Points:
+{chr(10).join([f"• {point}" for point in key_points])}
+
+Learning Tip: {learning_tip}"""
+    
+    return fallback_explanation
 
 def generate_quiz_for_document(doc_id: int, max_questions_per_topic: int = 2) -> List[QuizQuestion]:
     """Generate a quiz for a document with improved error handling."""

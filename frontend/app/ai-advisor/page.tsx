@@ -179,7 +179,7 @@ export default function AIAdvisorPage() {
         <div className="flex items-center justify-center space-x-2 mb-2">
           <Brain className="h-5 w-5 text-slate-600" />
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200">
-            AI Learning Advisor
+            LearnLens
           </h1>
         </div>
         <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">

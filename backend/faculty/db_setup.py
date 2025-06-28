@@ -1,6 +1,7 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from datetime import datetime
 
 # Create engine
 DATABASE_URL = "sqlite:///./learning_platform.db"  # Adjust this URL as needed
@@ -19,6 +20,9 @@ class Document(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     content = Column(Text)
+    summary = Column(Text)  # Document summary for better RAG
+    topics = Column(Text)   # JSON string of extracted topics
+    created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationship to chunks
     chunks = relationship("DocumentChunk", back_populates="document")

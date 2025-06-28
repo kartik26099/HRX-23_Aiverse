@@ -386,7 +386,7 @@ export default function AIFacultyPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-4 flex items-center gap-2">
           <Brain className="h-8 w-8 text-blue-600" />
-          AI Faculty
+          EduMentor
         </h1>
         <p className="text-muted-foreground">
           Upload documents and get AI-generated quizzes, detailed reports, and interactive Q&A sessions
@@ -397,13 +397,6 @@ export default function AIFacultyPage() {
         {/* Upload Section */}
         <div className="lg:col-span-1">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="w-5 h-5" />
-                Upload Document
-              </CardTitle>
-              <CardDescription>Upload PDF, DOCX, or TXT files to generate learning materials</CardDescription>
-            </CardHeader>
             <CardContent>
               <div
                 className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
@@ -521,27 +514,7 @@ export default function AIFacultyPage() {
               <TabsContent value="quiz" className="space-y-4">
                 {quiz.length > 0 ? (
                   <Card className="border-0 shadow-xl">
-                    <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-t-lg border-b-0">
-                      <CardTitle className="flex items-center gap-3">
-                        <div className="p-2 bg-primary-foreground/10 rounded-lg">
-                          <Target className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <div className="text-xl font-bold">Knowledge Assessment</div>
-                          <div 
-                            className="text-sm font-normal text-primary-foreground/80 mt-1 overflow-hidden"
-                            title={currentDocument.title}
-                          >
-                            <div className="truncate">
-                              {currentDocument.title}
-                            </div>
-                          </div>
-                        </div>
-                      </CardTitle>
-                      <CardDescription className="text-primary-foreground/80">
-                        Demonstrate your understanding through carefully crafted questions
-                      </CardDescription>
-                    </CardHeader>
+                   
                     <CardContent className="p-8">
                       <ScrollArea className="h-[60vh] pr-4">
                         {quiz.map((question, index) => (
@@ -648,20 +621,6 @@ export default function AIFacultyPage() {
               <TabsContent value="results" className="space-y-4">
                 {quizResults ? (
                   <Card className="border-0 shadow-xl">
-                    <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-t-lg border-b-0">
-                      <CardTitle className="flex items-center gap-3">
-                        <div className="p-2 bg-primary-foreground/10 rounded-lg">
-                          <TrendingUp className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <div className="text-xl font-bold">Performance Analysis</div>
-                          <div className="text-sm font-normal text-primary-foreground/80 mt-1">Comprehensive insights and recommendations</div>
-                        </div>
-                      </CardTitle>
-                      <CardDescription className="text-primary-foreground/80">
-                        Detailed breakdown of your knowledge assessment results
-                      </CardDescription>
-                    </CardHeader>
                     <CardContent className="p-8">
                       <ScrollArea className="h-[70vh] pr-4">
                         {/* Overall Performance - Dark Mode Compatible */}
@@ -794,7 +753,42 @@ export default function AIFacultyPage() {
                                     <MessageSquare className="h-5 w-5 text-accent-foreground" />
                                     Detailed Explanation
                                   </h5>
-                                  <p className="text-muted-foreground leading-relaxed text-lg">{result.explanation}</p>
+                                  <div className="text-muted-foreground leading-relaxed text-lg prose prose-sm max-w-none dark:prose-invert">
+                                    {result.explanation.split('\n').map((line: string, index: number) => {
+                                      if (line.startsWith('✅') || line.startsWith('❌')) {
+                                        // Status line
+                                        return (
+                                          <h3 key={index} className="text-xl font-bold text-foreground mb-3 mt-4 first:mt-0">
+                                            {line}
+                                          </h3>
+                                        )
+                                      } else if (line.startsWith('Summary:') || line.startsWith('Detailed Explanation:') || line.startsWith('Key Points:') || line.startsWith('Learning Tip:')) {
+                                        // Section headers
+                                        return (
+                                          <p key={index} className="font-semibold text-foreground mb-2 mt-4">
+                                            {line}
+                                          </p>
+                                        )
+                                      } else if (line.startsWith('• ')) {
+                                        // Bullet points
+                                        return (
+                                          <li key={index} className="ml-4 mb-1">
+                                            {line.replace('• ', '')}
+                                          </li>
+                                        )
+                                      } else if (line.trim() === '') {
+                                        // Empty line
+                                        return <br key={index} />
+                                      } else {
+                                        // Regular paragraph
+                                        return (
+                                          <p key={index} className="mb-3">
+                                            {line}
+                                          </p>
+                                        )
+                                      }
+                                    })}
+                                  </div>
                                 </div>
                               </Card>
                             ))}
@@ -847,41 +841,9 @@ export default function AIFacultyPage() {
 
               <TabsContent value="chat" className="space-y-4">
                 <Card className="border-0 shadow-xl">
-                  <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-t-lg border-b-0">
-                    <CardTitle className="flex items-center gap-3">
-                      <div className="p-2 bg-primary-foreground/10 rounded-lg">
-                        <MessageSquare className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <div className="text-xl font-bold">AI Document Assistant</div>
-                        <div className="text-sm font-normal text-primary-foreground/80 mt-1">
-                          Ask questions about your uploaded documents
-                        </div>
-                      </div>
-                    </CardTitle>
-                    <CardDescription className="text-primary-foreground/80">
-                      Get instant answers and insights from your document content
-                    </CardDescription>
-                  </CardHeader>
                   <CardContent className="p-6">
                     {/* Document Context */}
-                    {availableDocuments.length > 0 && (
-                      <div className="mb-4 p-4 bg-muted/50 rounded-lg border border-border">
-                        <div className="flex items-center gap-2 mb-2">
-                          <HardDrive className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium text-muted-foreground">Available Documents:</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {availableDocuments.map((doc) => (
-                            <Badge key={doc.id} variant="secondary" className="text-xs max-w-full">
-                              <span className="truncate block max-w-32" title={doc.title}>
-                                {doc.title}
-                              </span>
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                      
                     
                     {availableDocuments.length === 0 && (
                       <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">

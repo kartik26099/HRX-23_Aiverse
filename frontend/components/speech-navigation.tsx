@@ -26,24 +26,24 @@ export default function SpeechNavigation({ className = '' }: SpeechNavigationPro
     'home page': '/',
     'main page': '/',
     'go to scheduler': '/scheduler',
-    'scheduler': '/scheduler',
+    'timecrafter': '/scheduler',
     'diy scheduler': '/scheduler',
-    'go to ai advisor': '/ai-advisor',
+    'go to LearnLens': '/ai-advisor',
     'ai advisor': '/ai-advisor',
-    'go to faculty': '/ai-faculty',
-    'faculty': '/ai-faculty',
+    'go to edumentor': '/ai-faculty',
+    'edumentor': '/ai-faculty',
     'ai faculty': '/ai-faculty',
-    'go to course generator': '/course-generator',
-    'course generator': '/course-generator',
-    'go to diy evaluator': '/diy-evaluator',
+    'go to courseweaver': '/course-generator',
+    'courseweaver': '/course-generator',
+    'go to evaluator': '/diy-evaluator',
     'diy evaluator': '/diy-evaluator',
     'go to diy generator': '/diy-generator',
     'diy generator': '/diy-generator',
-    'go to library': '/library',
-    'library': '/library',
+    'go to knowvault': '/library',
+    'knowvault': '/library',
     'ai library': '/library',
-    'go to research helper': '/research-helper',
-    'research helper': '/research-helper',
+    'go to researchmate': '/research-helper',
+    'researchmate': '/research-helper',
     'go to test translate': '/test-translate',
     'test translate': '/test-translate',
     'translate': '/test-translate',
@@ -285,8 +285,9 @@ export default function SpeechNavigation({ className = '' }: SpeechNavigationPro
     
     // Check page-specific commands
     const pageCommands = getPageSpecificCommands()
-    if (pageCommands[command as keyof typeof pageCommands]) {
-      pageCommands[command as keyof typeof pageCommands]()
+    const pageCommand = pageCommands[command as keyof typeof pageCommands]
+    if (pageCommand) {
+      pageCommand()
       return
     }
     

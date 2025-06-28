@@ -78,8 +78,8 @@ class AIReminderService:
             if digits_only.startswith(('6', '7', '8', '9')):
                 return f"+91{digits_only}"
             else:
-            # US number without country code
-            return f"+1{digits_only}"
+                # US number without country code
+                return f"+1{digits_only}"
         elif len(digits_only) == 11 and digits_only.startswith('1'):
             # US number with country code
             return f"+{digits_only}"
@@ -262,18 +262,18 @@ class AIReminderService:
             
             # Send SMS via Twilio
             try:
-            message_sid = self.twilio_client.messages.create(
-                body=message,
-                from_=self.twilio_number,
-                to=user_phone
-            )
-            
-            # Update reminder status
-            self.update_reminder_status(reminder_id, 'sent', message_sid.sid)
-            print(f"✅ SMS sent successfully: {message}")
-            return True
-            
-        except TwilioException as e:
+                message_sid = self.twilio_client.messages.create(
+                    body=message,
+                    from_=self.twilio_number,
+                    to=user_phone
+                )
+                
+                # Update reminder status
+                self.update_reminder_status(reminder_id, 'sent', message_sid.sid)
+                print(f"✅ SMS sent successfully: {message}")
+                return True
+                
+            except TwilioException as e:
                 error_msg = str(e)
                 print(f"❌ Twilio error: {error_msg}")
                 
@@ -288,7 +288,7 @@ class AIReminderService:
                     return False
                 else:
                     self.update_reminder_status(reminder_id, 'failed', error_msg)
-            return False
+                    return False
                     
         except Exception as e:
             print(f"❌ Error sending SMS: {e}")

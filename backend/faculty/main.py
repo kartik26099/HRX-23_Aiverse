@@ -97,7 +97,13 @@ def get_documents():
     db = get_db()
     try:
         documents = db.query(Document).all()
-        return jsonify([{"id": doc.id, "title": doc.title} for doc in documents])
+        return jsonify([{
+            "id": doc.id, 
+            "title": doc.title,
+            "summary": doc.summary,
+            "topics": doc.topics,
+            "created_at": doc.created_at.isoformat() if hasattr(doc, 'created_at') and doc.created_at else None
+        } for doc in documents])
     finally:
         db.close()
 
@@ -114,8 +120,10 @@ def get_documents_detailed():
             detailed_docs.append({
                 "id": doc.id,
                 "title": doc.title,
+                "summary": doc.summary,
+                "topics": doc.topics,
                 "chunk_count": chunk_count,
-                "uploaded_at": doc.created_at.isoformat() if hasattr(doc, 'created_at') else None
+                "uploaded_at": doc.created_at.isoformat() if hasattr(doc, 'created_at') and doc.created_at else None
             })
         return jsonify(detailed_docs)
     finally:

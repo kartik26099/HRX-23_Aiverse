@@ -740,7 +740,63 @@ export default function DIYGeneratorPage() {
     }
   };
 
-  // Emotion detection functions
+  // Add function to modify current project
+  const modifyCurrentProject = async (emotion: string) => {
+    setIsAdjustingProject(true);
+    setError(null);
+
+    try {
+      if (!roadmap) {
+        throw new Error('No project to modify');
+      }
+
+      const requestData = {
+        current_project: roadmap,
+        emotion: emotion,
+        action: 'modify'
+      };
+
+      console.log('Modifying current project with emotion:', emotion);
+
+      const response = await fetch(`${BACKEND_URL}/api/modify-project-for-mood`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: ApiResponse = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to modify project');
+      }
+
+      // Update the current roadmap with modifications
+      const modifiedRoadmap: ProjectRoadmap = {
+        ...roadmap,
+        title: data.project_data?.project_title || roadmap.title,
+        projectOverview: data.project_data?.project_overview || roadmap.projectOverview,
+        days: data.project_data?.project_roadmap ? parseProjectRoadmap(data.project_data.project_roadmap, data.project_data?.phase_videos || {}) : roadmap.days,
+        moodDetected: emotion,
+        moodAdjustment: data.project_data?.mood_adjustment || { message: "", adjustment: "" },
+        adjustmentMessage: data.project_data?.adjustment_message || "",
+      };
+
+      setRoadmap(modifiedRoadmap);
+      toast.success("Your project has been modified based on your mood!");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to modify project';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsAdjustingProject(false);
+      stopContinuousEmotionDetection();
+    }
+  }
+
+  // Add emotion detection functions
   const checkEmotionDetectorStatus = async () => {
     try {
       const response = await fetch(`${BACKEND_URL}/api/emotion-detector-status`);
@@ -753,23 +809,10 @@ export default function DIYGeneratorPage() {
       console.error('Error checking emotion detector status:', error);
       return false;
     }
-  };
+  }
 
   const captureEmotion = async () => {
-    setIsCapturingEmotion(true);
-    setError(null);
-
     try {
-      // Check if emotion detector is available
-      const isAvailable = await checkEmotionDetectorStatus();
-      if (!isAvailable) {
-        toast.error("Emotion detection is not available. Please try again later.");
-        return null;
-      }
-
-      // Show camera permission request
-      toast.info("Camera access required for emotion detection. Please allow camera permissions.");
-
       const response = await fetch(`${BACKEND_URL}/api/capture-emotion`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -781,41 +824,23 @@ export default function DIYGeneratorPage() {
       }
 
       const data: EmotionResponse = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to capture emotion');
-      }
-
-      console.log('Emotion detected:', data);
-      
-      setDetectedEmotion(data.emotion || null);
-      setEmotionConfidence(data.confidence || null);
-      setEmotionMessage(data.message || "");
-      
       return data;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to capture emotion';
-      setError(errorMessage);
-      toast.error(errorMessage);
+      console.error('Error capturing emotion:', error);
       return null;
-    } finally {
-      setIsCapturingEmotion(false);
     }
-  };
+  }
 
   const generateAdjustedProject = async (emotion: string) => {
     setIsAdjustingProject(true);
     setError(null);
 
     try {
-      const skillLevel = getExperienceLabel(formData.experienceLevel[0]).toLowerCase();
-      
-      // Fetch user profile data if user is signed in
-      let userProfile = null;
-      if (isSignedIn && user) {
-        userProfile = await fetchUserProfile();
+      if (!formData.topic.trim() || !formData.availableHours) {
+        throw new Error('Project topic and available hours are required');
       }
 
+      const skillLevel = getExperienceLabel(formData.experienceLevel[0]).toLowerCase();
       const requestData = {
         topic: formData.topic,
         available_time: `${formData.availableHours} hours`,
@@ -823,8 +848,8 @@ export default function DIYGeneratorPage() {
         category: formData.category,
         user_description: formData.userDescription,
         youtube_url: formData.youtubeUrl || "",
-        user_profile: userProfile || {},
-        emotion: emotion, // Include the detected emotion
+        user_profile: {},
+        emotion: emotion
       };
 
       console.log('Generating adjusted project with emotion:', emotion);
@@ -841,7 +866,7 @@ export default function DIYGeneratorPage() {
 
       const data: ApiResponse = await response.json();
       if (!data.success) {
-        throw new Error(data.error || 'Failed to generate adjusted roadmap');
+        throw new Error(data.error || 'Failed to generate adjusted project');
       }
 
       const transformedRoadmap: ProjectRoadmap = {
@@ -873,43 +898,23 @@ export default function DIYGeneratorPage() {
         flowchart: data.flowchart || undefined,
         userProfileUsed: data.project_data?.user_profile_used || null,
         timeline: data.project_data?.timeline || [],
-        // Emotion detection related fields
-        moodDetected: data.project_data?.mood_detected || emotion,
+        moodDetected: emotion,
         moodAdjustment: data.project_data?.mood_adjustment || { message: "", adjustment: "" },
         adjustmentMessage: data.project_data?.adjustment_message || "",
       };
 
       setRoadmap(transformedRoadmap);
-      
-      // Generate flowchart for the adjusted project
-      try {
-        const flowchartResponse = await fetch(`${BACKEND_URL}/api/generate-flowchart`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ project_data: transformedRoadmap }),
-        });
-        
-        if (flowchartResponse.ok) {
-          const flowchartData = await flowchartResponse.json();
-          if (flowchartData.success) {
-            setRoadmap(prev => prev ? { ...prev, flowchart: flowchartData } : prev);
-          }
-        }
-      } catch (flowchartError) {
-        console.error('Failed to generate flowchart:', flowchartError);
-      }
-
-      toast.success("Your mood-adjusted project roadmap has been created successfully!");
+      toast.success("Your project has been adjusted based on your mood!");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate adjusted project';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
       setIsAdjustingProject(false);
+      stopContinuousEmotionDetection();
     }
-  };
+  }
 
-  // Helper: Start webcam
   const startWebcam = async () => {
     console.log("🟢 Starting webcam...")
     try {
@@ -932,9 +937,8 @@ export default function DIYGeneratorPage() {
           console.log("▶️  Video is playing")
         })
         
-        // Start playing the video
-        await videoRef.current.play()
-        console.log("✅ Video element configured and playing")
+        videoRef.current.play()
+        console.log("✅ Video element configured")
       }
       
       setWebcamStream(stream)
@@ -949,7 +953,6 @@ export default function DIYGeneratorPage() {
     }
   }
 
-  // Helper: Stop webcam
   const stopWebcam = () => {
     console.log("🟢 Stopping webcam...")
     if (webcamStream) {
@@ -964,7 +967,6 @@ export default function DIYGeneratorPage() {
     console.log("✅ Webcam stopped")
   }
 
-  // Helper: Capture frame and send to backend
   const captureAndDetectEmotion = async () => {
     console.log("📸 Capturing frame for emotion detection...")
     if (!videoRef.current || !canvasRef.current) {
@@ -1034,28 +1036,55 @@ export default function DIYGeneratorPage() {
     setIsEmotionDetectionActive(true)
     setError(null)
     
-    // Check if emotion detector is available on backend
-    try {
-      const statusResponse = await fetch(`${BACKEND_URL}/api/emotion-detector-status`)
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json()
-        if (!statusData.emotion_detector_available) {
-          console.error("❌ Emotion detector not available on backend")
-          toast.error("Emotion detection is not available. Please try again later.")
-          setIsEmotionDetectionActive(false)
-          return
-        }
-        console.log("✅ Emotion detector is available on backend")
-      }
-    } catch (error) {
-      console.error("❌ Error checking emotion detector status:", error)
-      toast.error("Could not connect to emotion detection service.")
+    // Start frontend webcam first
+    const webcamOk = await startWebcam()
+    if (!webcamOk) {
+      console.error("❌ Failed to start webcam, stopping detection")
       setIsEmotionDetectionActive(false)
       return
     }
     
-    console.log("🎬 Starting detection loop...")
-    startContinuousDetectionLoop()
+    // Set webcam as active
+    setIsWebcamActive(true)
+    
+    console.log("⏳ Waiting for video to be ready...")
+    // Wait longer for video to be ready and add readiness check
+    setTimeout(() => {
+      if (videoRef.current && videoRef.current.readyState >= 2) {
+        console.log("🎬 Video is ready, starting detection loop...")
+        startContinuousDetectionLoop()
+      } else {
+        console.log("⏳ Video still not ready, waiting a bit more...")
+        // Try again after another second
+        setTimeout(() => {
+          if (videoRef.current && videoRef.current.readyState >= 2) {
+            console.log("🎬 Video is now ready, starting detection loop...")
+            startContinuousDetectionLoop()
+          } else {
+            console.error("❌ Video never became ready, stopping detection")
+            setIsEmotionDetectionActive(false)
+            setIsWebcamActive(false)
+            toast.error("Camera failed to initialize properly")
+          }
+        }, 1000)
+      }
+    }, 2000) // Increased from 1000 to 2000ms
+  }
+
+  // Stop detection and webcam
+  const stopContinuousEmotionDetection = () => {
+    console.log("🛑 Stopping continuous emotion detection...")
+    setIsEmotionDetectionActive(false)
+    setIsWebcamActive(false)
+    if (emotionDetectionInterval) {
+      console.log("🛑 Clearing detection interval")
+      clearInterval(emotionDetectionInterval)
+      setEmotionDetectionInterval(null)
+    }
+    setCurrentEmotion(null)
+    setEmotionConfidence(null)
+    stopWebcam()
+    console.log("✅ Continuous emotion detection stopped")
   }
 
   // Loop for continuous detection
@@ -1063,30 +1092,30 @@ export default function DIYGeneratorPage() {
     console.log("🔄 Starting continuous detection loop (every 3 seconds)...")
     const interval = setInterval(async () => {
       console.log("🔄 Detection cycle starting...")
-      if (!isEmotionDetectionActive) {
-        console.log("🛑 Detection stopped, clearing interval")
-        clearInterval(interval)
-        return
+      console.log(`🔍 Debug - isEmotionDetectionActive: ${isEmotionDetectionActive}`)
+      console.log(`🔍 Debug - videoRef.current: ${!!videoRef.current}`)
+      console.log(`🔍 Debug - video readyState: ${videoRef.current?.readyState || 'no video'}`)
+      console.log(`🔍 Debug - isWebcamActive: ${isWebcamActive}`)
+      
+      // Don't stop the loop based on state flags - let it continue running
+      // Only stop if explicitly called
+      
+      // Check if video is ready before attempting detection
+      if (!videoRef.current || videoRef.current.readyState < 2) {
+        console.log("⏳ Video not ready yet, skipping this cycle...")
+        console.log(`   - Video ref exists: ${!!videoRef.current}`)
+        console.log(`   - Video readyState: ${videoRef.current?.readyState || 'no video'}`)
+        return // Skip this cycle but don't stop the loop
       }
       
+      console.log("✅ Video is ready, attempting emotion detection...")
+      
+      // Use frontend webcam to capture image and send to backend
       try {
-        // Use the backend's continuous emotion detection endpoint
-        console.log("📡 Calling backend continuous emotion detection...")
-        const response = await fetch(`${BACKEND_URL}/api/detect-emotion-continuous`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ detection_duration: 1 }),
-        })
+        const data = await captureAndDetectEmotion()
+        console.log("📊 Emotion detection result:", data)
         
-        if (!response.ok) {
-          console.error("❌ Backend response not ok:", response.status, response.statusText)
-          return // Continue the loop even if this detection fails
-        }
-        
-        const data: ContinuousEmotionResponse = await response.json()
-        console.log("🎭 Backend emotion detection result:", data)
-        
-        if (data.success && data.emotion) {
+        if (data && data.success && data.emotion) {
           console.log(`📊 Updating emotion state: ${data.emotion} (${(data.confidence || 0) * 100}%)`)
           setCurrentEmotion(data.emotion)
           setEmotionConfidence(data.confidence || 0)
@@ -1094,16 +1123,18 @@ export default function DIYGeneratorPage() {
           // Debug: Log all the conditions for popup
           const emotion = data.emotion
           const confidence = data.confidence || 0
-          const shouldShowPopup = data.should_show_popup || false
+          const isNegativeEmotion = ["Fear", "Sad", "Surprise", "Angry"].includes(emotion)
+          const hasHighConfidence = confidence > 0.2 // Lowered from 0.4 to 0.2 for testing
           
           console.log(`🔍 Popup Debug:`)
           console.log(`   - Emotion: "${emotion}"`)
           console.log(`   - Confidence: ${confidence} (${confidence * 100}%)`)
-          console.log(`   - Should show popup: ${shouldShowPopup}`)
-          console.log(`   - Message: ${data.message || 'No message'}`)
+          console.log(`   - Is negative emotion: ${isNegativeEmotion}`)
+          console.log(`   - Has high confidence: ${hasHighConfidence} (threshold: 0.2)`)
+          console.log(`   - Should show popup: ${isNegativeEmotion && hasHighConfidence}`)
           
-          // Show popup if backend indicates we should
-          if (shouldShowPopup) {
+          // Show popup for negative emotions
+          if (isNegativeEmotion && hasHighConfidence) {
             console.log(`🚨 NEGATIVE EMOTION DETECTED: ${emotion} (${confidence * 100}%) - SHOWING POPUP!`)
             console.log(`🚨 Setting detectedEmotion to: ${emotion}`)
             console.log(`🚨 Setting emotionMessage to: ${data.message || `You look ${emotion.toLowerCase()}. Would you like to adjust your project?`}`)
@@ -1119,45 +1150,26 @@ export default function DIYGeneratorPage() {
               console.log(`🚨 After timeout - detectedEmotion should be: ${emotion}`)
             }, 100)
             
+            // Only stop detection when popup is shown
             stopContinuousEmotionDetection()
           } else {
             console.log(`✅ Emotion ${emotion} is not negative or confidence too low (${confidence * 100}%)`)
           }
         } else {
           console.log("⚠️  No emotion data received or detection failed")
-          // Don't stop the loop, just continue to next cycle
+          console.log("   - Data received:", data)
+          if (data && !data.success) {
+            console.log("   - Error from backend:", data.error)
+          }
         }
       } catch (error) {
-        console.error("❌ Error in continuous emotion detection:", error)
-        // Don't stop the loop on error, just continue to next cycle
+        console.error("❌ Error in emotion detection cycle:", error)
       }
     }, 3000)
     setEmotionDetectionInterval(interval)
     console.log("✅ Continuous detection loop started")
   }
 
-  // Stop detection and webcam
-  const stopContinuousEmotionDetection = () => {
-    console.log("🛑 Stopping continuous emotion detection...")
-    setIsEmotionDetectionActive(false)
-    if (emotionDetectionInterval) {
-      console.log("🛑 Clearing detection interval")
-      clearInterval(emotionDetectionInterval)
-      setEmotionDetectionInterval(null)
-    }
-    setCurrentEmotion(null)
-    setEmotionConfidence(null)
-    console.log("✅ Continuous emotion detection stopped")
-  }
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      stopContinuousEmotionDetection()
-    }
-  }, [])
-
-  // Update the emotion popup response handler to handle three options
   const handleEmotionPopupResponse = async (action: 'change' | 'modify' | 'keep') => {
     console.log(`🎯 User selected action: ${action} for emotion: ${detectedEmotion}`)
     setShowEmotionPopup(false);
@@ -1180,64 +1192,37 @@ export default function DIYGeneratorPage() {
     }
   }
 
-  // Add function to modify current project
-  const modifyCurrentProject = async (emotion: string) => {
-    setIsAdjustingProject(true);
-    setError(null);
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      stopContinuousEmotionDetection()
+    }
+  }, [])
 
+  // Test backend emotion detection endpoint
+  const testBackendEmotionDetection = async () => {
+    console.log("🧪 Testing backend emotion detection endpoint...")
     try {
-      if (!roadmap) {
-        throw new Error('No project to modify');
+      const response = await fetch(`${BACKEND_URL}/api/emotion-detector-status`)
+      if (response.ok) {
+        const data = await response.json()
+        console.log("✅ Backend emotion detector status:", data)
+        return data.emotion_detector_available
+      } else {
+        console.error("❌ Backend emotion detector status check failed:", response.status)
+        return false
       }
-
-      const requestData = {
-        current_project: roadmap,
-        emotion: emotion,
-        action: 'modify'
-      };
-
-      console.log('Modifying current project with emotion:', emotion);
-
-      const response = await fetch(`${BACKEND_URL}/api/modify-project-for-mood`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: ApiResponse = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to modify project');
-      }
-
-      // Update the current roadmap with modifications
-      const modifiedRoadmap: ProjectRoadmap = {
-        ...roadmap,
-        title: data.project_data?.project_title || roadmap.title,
-        projectOverview: data.project_data?.project_overview || roadmap.projectOverview,
-        days: data.project_data?.project_roadmap ? parseProjectRoadmap(data.project_data.project_roadmap, data.project_data?.phase_videos || {}) : roadmap.days,
-        moodDetected: emotion,
-        moodAdjustment: data.project_data?.mood_adjustment || { message: "", adjustment: "" },
-        adjustmentMessage: data.project_data?.adjustment_message || "",
-      };
-
-      setRoadmap(modifiedRoadmap);
-      toast.success("Your project has been modified based on your mood!");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to modify project';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsAdjustingProject(false);
-      stopContinuousEmotionDetection();
+      console.error("❌ Error testing backend emotion detection:", error)
+      return false
     }
   }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      {/* Hidden video/canvas for webcam emotion detection */}
+      <video ref={videoRef} width={224} height={224} style={{ display: 'none' }} playsInline muted />
+      <canvas ref={canvasRef} width={224} height={224} style={{ display: 'none' }} />
       <div className="container mx-auto px-4 py-6 max-w-6xl">
         {/* Header */}
         <div className="text-center mb-8">
@@ -1252,6 +1237,31 @@ export default function DIYGeneratorPage() {
           </p>
         </div>
 
+        {/* Manual Emotion Detection Test Button */}
+        {!isEmotionDetectionActive && (
+          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Brain className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  Test Emotion Detection
+                </span>
+              </div>
+              <Button
+                onClick={async () => {
+                  console.log("🧪 Manual emotion detection test started")
+                  await startContinuousEmotionDetection()
+                }}
+                variant="outline"
+                size="sm"
+                className="text-amber-600 border-amber-300 hover:bg-amber-100"
+              >
+                Start Detection Test
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Emotion Detection Status */}
         {isEmotionDetectionActive && (
           <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -1261,9 +1271,11 @@ export default function DIYGeneratorPage() {
                 <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
                   Emotion Detection Active
                 </span>
-                <span className="text-xs text-green-600 dark:text-green-400">
-                  (Backend Camera: Active)
-                </span>
+                {isWebcamActive && (
+                  <span className="text-xs text-green-600 dark:text-green-400">
+                    (Camera: {webcamStream ? 'Connected' : 'Connecting...'})
+                  </span>
+                )}
               </div>
               {currentEmotion && (
                 <div className="text-xs text-blue-600 dark:text-blue-400">
@@ -1282,10 +1294,23 @@ export default function DIYGeneratorPage() {
                 Stop Detection
               </Button>
             </div>
+            
+            {/* Debug Panel */}
+            <div className="mt-3 p-3 bg-white dark:bg-slate-800 rounded border text-xs">
+              <div className="font-medium text-slate-700 dark:text-slate-300 mb-2">Debug Info:</div>
+              <div className="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-400">
+                <div>Detection Active: <span className={isEmotionDetectionActive ? 'text-green-600' : 'text-red-600'}>{isEmotionDetectionActive ? 'Yes' : 'No'}</span></div>
+                <div>Webcam Active: <span className={isWebcamActive ? 'text-green-600' : 'text-red-600'}>{isWebcamActive ? 'Yes' : 'No'}</span></div>
+                <div>Video Ready: <span className={(videoRef.current?.readyState || 0) >= 2 ? 'text-green-600' : 'text-red-600'}>{(videoRef.current?.readyState || 0) >= 2 ? 'Yes' : 'No'}</span></div>
+                <div>Interval Active: <span className={emotionDetectionInterval ? 'text-green-600' : 'text-red-600'}>{emotionDetectionInterval ? 'Yes' : 'No'}</span></div>
+                <div>Current Emotion: <span className="text-blue-600">{currentEmotion || 'None'}</span></div>
+                <div>Confidence: <span className="text-blue-600">{(emotionConfidence || 0) * 100}%</span></div>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Updated Emotion Detection Popup */}
+        {/* Emotion Detection Popup */}
         {showEmotionPopup && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-xl">
@@ -1357,6 +1382,8 @@ export default function DIYGeneratorPage() {
           <div>detectedEmotion: {detectedEmotion || 'null'}</div>
           <div>emotionConfidence: {emotionConfidence ? (emotionConfidence * 100).toFixed(1) + '%' : 'null'}</div>
           <div>isEmotionDetectionActive: {isEmotionDetectionActive ? 'true' : 'false'}</div>
+          <div>currentEmotion: {currentEmotion || 'null'}</div>
+          <div>isWebcamActive: {isWebcamActive ? 'true' : 'false'}</div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">

@@ -13,6 +13,7 @@ import logging
 import base64
 import graphviz
 from dotenv import load_dotenv
+import sys
 
 # Load environment variables from .env file
 load_dotenv()
@@ -23,11 +24,21 @@ logger = logging.getLogger(__name__)
 
 # Import emotion detection module AFTER logger is set up
 try:
+    logger.info("Attempting to import emotion_detector module...")
     from emotion_detector import EmotionDetector
+    logger.info("Successfully imported emotion_detector module")
+    
+    logger.info("Attempting to create EmotionDetector instance...")
     emotion_detector = EmotionDetector()
     logger.info("Emotion detector initialized successfully")
+except ImportError as e:
+    logger.error(f"Import error initializing emotion detector: {str(e)}")
+    logger.error(f"Python path: {sys.path}")
+    emotion_detector = None
 except Exception as e:
     logger.error(f"Failed to initialize emotion detector: {str(e)}")
+    import traceback
+    logger.error(f"Full traceback: {traceback.format_exc()}")
     emotion_detector = None
 
 app = Flask(__name__)

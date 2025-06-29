@@ -1,0 +1,5 @@
+# Groq API Configuration
+# Copy this file to .env and add your actual API key
+GROQ_API_KEY=xai-PAstrbBicoCEE3xgG1OXDhXdC5Vi15OY4syIezfSu8oDqMcYdmxhbccQgtD2bleeBs3VhupzKuFNGIyw
+# Optional: Override model name
+MODEL_NAME=llama-3.3-70b-versatile 

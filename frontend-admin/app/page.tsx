@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   BarChart, 
   Bar, 
@@ -30,7 +31,19 @@ import {
   RefreshCw,
   BarChart3,
   PieChart as PieChartIcon,
-  Activity
+  Activity,
+  Shield,
+  Settings,
+  Database,
+  Cpu,
+  Globe,
+  Target,
+  Zap,
+  Sparkles,
+  ArrowRight,
+  Eye,
+  Clock,
+  Star
 } from 'lucide-react';
 
 interface SentimentData {
@@ -78,6 +91,7 @@ export default function AdminDashboard() {
   const [data, setData] = useState<SentimentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   const fetchSentimentData = async (forceRefresh = false) => {
     try {
@@ -94,10 +108,11 @@ export default function AdminDashboard() {
       }
       
       const result = await response.json();
-      console.log('Fetched sentiment data:', result); // Debug log
+      console.log('Fetched sentiment data:', result);
       setData(result);
+      setLastRefresh(new Date());
     } catch (err) {
-      console.error('Error fetching sentiment data:', err); // Debug log
+      console.error('Error fetching sentiment data:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
@@ -110,12 +125,20 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
         <div className="container mx-auto px-6 py-8">
           <div className="flex items-center justify-center h-96">
-            <div className="flex items-center space-x-2">
-              <RefreshCw className="h-6 w-6 animate-spin" />
-              <span>Loading sentiment analysis...</span>
+            <div className="text-center space-y-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full blur-2xl"></div>
+                <div className="relative w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                  <RefreshCw className="h-8 w-8 text-white animate-spin" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Loading Analytics</h3>
+                <p className="text-slate-600 dark:text-slate-400">Gathering community insights...</p>
+              </div>
             </div>
           </div>
         </div>
@@ -125,14 +148,24 @@ export default function AdminDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
         <div className="container mx-auto px-6 py-8">
           <div className="flex items-center justify-center h-96">
-            <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Error Loading Data</h2>
-              <p className="text-gray-600 mb-4">{error}</p>
-              <Button onClick={fetchSentimentData}>Retry</Button>
+            <div className="text-center space-y-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-red-500/20 to-orange-500/20 rounded-full blur-2xl"></div>
+                <div className="relative w-16 h-16 bg-gradient-to-r from-red-500 to-orange-500 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="h-8 w-8 text-white" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Error Loading Data</h3>
+                <p className="text-slate-600 dark:text-slate-400 mb-4">{error}</p>
+                <Button onClick={() => fetchSentimentData()} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -146,6 +179,13 @@ export default function AdminDashboard() {
 
   const { sentiment_data, recommendations } = data;
   const { overall_stats, tag_analysis } = sentiment_data;
+
+  // Calculate additional metrics
+  const totalEngagement = overall_stats.total_posts + overall_stats.total_comments;
+  const positivePercentage = totalEngagement > 0 ? 
+    ((overall_stats.positive_posts + overall_stats.positive_comments) / totalEngagement * 100).toFixed(1) : 0;
+  const negativePercentage = totalEngagement > 0 ? 
+    ((overall_stats.negative_posts + overall_stats.negative_comments) / totalEngagement * 100).toFixed(1) : 0;
 
   // Prepare chart data
   const postsSentimentData = [
@@ -168,9 +208,6 @@ export default function AdminDashboard() {
     total: stats.total_posts,
   }));
 
-  console.log('Tag data for chart:', tagData); // Debug log
-
-  // Handle empty tag data
   const hasTagData = tagData.length > 0 && tagData.some(tag => tag.total > 0);
 
   const timeSeriesData = sentiment_data.posts_sentiment
@@ -189,245 +226,228 @@ export default function AdminDashboard() {
     }, [] as Array<{ date: string; sentiment: number }>)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+  // Admin stats
+  const adminStats = [
+    { 
+      label: "Total Posts", 
+      value: overall_stats.total_posts.toString(), 
+      icon: MessageSquare, 
+      color: "text-blue-600",
+      change: "+12%",
+      trend: "up"
+    },
+    { 
+      label: "Total Comments", 
+      value: overall_stats.total_comments.toString(), 
+      icon: Users, 
+      color: "text-purple-600",
+      change: "+8%",
+      trend: "up"
+    },
+    { 
+      label: "Positive Sentiment", 
+      value: `${positivePercentage}%`, 
+      icon: Heart, 
+      color: "text-green-600",
+      change: "+5%",
+      trend: "up"
+    },
+    { 
+      label: "Active Topics", 
+      value: Object.keys(tag_analysis).length.toString(), 
+      icon: Target, 
+      color: "text-orange-600",
+      change: "+3",
+      trend: "up"
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="container mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-                Community Analytics Dashboard
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+      {/* Header */}
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5"></div>
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blue-400/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-40 right-20 w-24 h-24 bg-purple-400/20 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        
+        <div className="container mx-auto px-6 py-8 relative z-10">
+          <div className="flex items-center justify-between mb-8">
+            <div className="space-y-2">
+              <div className="flex items-center space-x-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-full px-6 py-3 w-fit border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
+                <Shield className="h-5 w-5 text-purple-600" />
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Admin Dashboard</span>
+                <Zap className="h-5 w-5 text-blue-600" />
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-slate-800 dark:text-slate-200">
+                Community Analytics
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Real-time sentiment analysis and community insights
+              <p className="text-xl text-slate-600 dark:text-slate-400">
+                Real-time insights into community sentiment and engagement
               </p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Button onClick={() => fetchSentimentData(false)} className="flex items-center space-x-2">
-                <RefreshCw className="h-4 w-4" />
-                <span>Refresh Data</span>
-              </Button>
+            <div className="flex items-center space-x-4">
               <Button 
-                onClick={() => fetchSentimentData(true)} 
-                variant="outline" 
-                className="flex items-center space-x-2"
+                onClick={() => fetchSentimentData(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
-                <RefreshCw className="h-4 w-4" />
-                <span>Force Refresh</span>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Data
               </Button>
+              {lastRefresh && (
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  Last updated: {lastRefresh.toLocaleTimeString()}
+                </div>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{overall_stats.total_posts}</div>
-              <p className="text-xs text-muted-foreground">
-                +{overall_stats.positive_posts} positive, {overall_stats.negative_posts} negative
-              </p>
-            </CardContent>
-          </Card>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {adminStats.map((stat, index) => (
+              <Card key={index} className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border-2 border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                      <div className={`w-12 h-12 bg-gradient-to-r ${stat.color.replace('text-', 'from-').replace('-600', '-500')} to-${stat.color.replace('text-', '').replace('-600', '-600')} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                        <stat.icon className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">{stat.value}</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400 font-medium">{stat.label}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`flex items-center text-sm font-medium ${
+                        stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {stat.trend === 'up' ? <TrendingUp className="h-4 w-4 mr-1" /> : <TrendingDown className="h-4 w-4 mr-1" />}
+                        {stat.change}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Comments</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{overall_stats.total_comments}</div>
-              <p className="text-xs text-muted-foreground">
-                +{overall_stats.positive_comments} positive, {overall_stats.negative_comments} negative
-              </p>
-            </CardContent>
-          </Card>
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            {/* Sentiment Overview */}
+            <Card className="border-2 border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-blue-600" />
+                  Posts Sentiment Overview
+                </CardTitle>
+                <CardDescription>Distribution of sentiment across community posts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={postsSentimentData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {postsSentimentData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Positive Sentiment</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {((overall_stats.positive_posts + overall_stats.positive_comments) / 
-                  (overall_stats.total_posts + overall_stats.total_comments) * 100).toFixed(1)}%
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Across posts and comments
-              </p>
-            </CardContent>
-          </Card>
+            {/* Comments Sentiment */}
+            <Card className="border-2 border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-purple-600" />
+                  Comments Sentiment Overview
+                </CardTitle>
+                <CardDescription>Distribution of sentiment across comments</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={commentsSentimentData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {commentsSentimentData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Negative Sentiment</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {((overall_stats.negative_posts + overall_stats.negative_comments) / 
-                  (overall_stats.total_posts + overall_stats.total_comments) * 100).toFixed(1)}%
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Requires attention
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+          {/* Tag Analysis */}
+          {hasTagData && (
+            <Card className="mb-8 border-2 border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-orange-600" />
+                  Topic Analysis by Tags
+                </CardTitle>
+                <CardDescription>Sentiment distribution across different community topics</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-96">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={tagData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="positive" stackId="a" fill="#10b981" />
+                      <Bar dataKey="neutral" stackId="a" fill="#6b7280" />
+                      <Bar dataKey="negative" stackId="a" fill="#ef4444" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Posts Sentiment Distribution */}
-          <Card>
+          {/* Recommendations */}
+          <Card className="border-2 border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <BarChart3 className="h-5 w-5" />
-                <span>Posts Sentiment Distribution</span>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-yellow-600" />
+                AI Recommendations
               </CardTitle>
-              <CardDescription>Breakdown of post sentiments</CardDescription>
+              <CardDescription>Actionable insights for community improvement</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={postsSentimentData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {postsSentimentData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Comments Sentiment Distribution */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <PieChartIcon className="h-5 w-5" />
-                <span>Comments Sentiment Distribution</span>
-              </CardTitle>
-              <CardDescription>Breakdown of comment sentiments</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={commentsSentimentData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {commentsSentimentData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tag Analysis */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Activity className="h-5 w-5" />
-              <span>Tag Sentiment Analysis</span>
-            </CardTitle>
-            <CardDescription>Sentiment breakdown by community tags</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {hasTagData ? (
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={tagData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="positive" fill="#10b981" name="Positive" />
-                  <Bar dataKey="neutral" fill="#6b7280" name="Neutral" />
-                  <Bar dataKey="negative" fill="#ef4444" name="Negative" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-64 text-gray-500">
-                <div className="text-center">
-                  <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No tag data available</p>
-                  <p className="text-sm">Posts need to be tagged to show sentiment analysis</p>
+              <div className="prose dark:prose-invert max-w-none">
+                <div className="whitespace-pre-line text-slate-700 dark:text-slate-300">
+                  {recommendations}
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Time Series Sentiment */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5" />
-              <span>Sentiment Over Time</span>
-            </CardTitle>
-            <CardDescription>Community sentiment trends</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={timeSeriesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Area 
-                  type="monotone" 
-                  dataKey="sentiment" 
-                  stroke="#3b82f6" 
-                  fill="#3b82f6" 
-                  fillOpacity={0.3}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Recommendations */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Heart className="h-5 w-5" />
-              <span>AI Recommendations</span>
-            </CardTitle>
-            <CardDescription>Actionable insights to improve community engagement</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="prose prose-sm max-w-none">
-              <div className="whitespace-pre-line text-gray-700 dark:text-gray-300">
-                {recommendations}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

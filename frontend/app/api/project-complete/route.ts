@@ -308,6 +308,11 @@ function normalizeSkills(skillsString: string): string {
     'design patterns': 'Design Patterns'
   };
 
+  // Helper function to escape regex special characters
+  function escapeRegex(string: string): string {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
   // Split skills and normalize each one
   const skills = skillsString.split(',').map(skill => {
     const trimmedSkill = skill.trim().toLowerCase();
@@ -319,8 +324,9 @@ function normalizeSkills(skillsString: string): string {
     
     // More precise partial matching - only match if the skill contains the key as a whole word
     for (const [key, value] of Object.entries(skillMappings)) {
-      // Use word boundaries to avoid false matches
-      const wordBoundaryPattern = new RegExp(`\\b${key}\\b`, 'i');
+      // Use word boundaries to avoid false matches, properly escape regex special characters
+      const escapedKey = escapeRegex(key);
+      const wordBoundaryPattern = new RegExp(`\\b${escapedKey}\\b`, 'i');
       if (wordBoundaryPattern.test(trimmedSkill)) {
         return value;
       }

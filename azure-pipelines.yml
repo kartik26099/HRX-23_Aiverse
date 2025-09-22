@@ -1,0 +1,92 @@
+# Azure DevOps Pipeline for Full-Stack Application
+trigger:
+  branches:
+    include:
+      - main
+      - master
+
+variables:
+  buildConfiguration: 'Release'
+  azureSubscription: 'Azure Student Subscription'
+  appName: 'hackronyx-app'
+  resourceGroupName: 'hackronyx-rg'
+
+stages:
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+  - job: BuildJob
+    displayName: 'Build Application'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '18.x'
+      displayName: 'Install Node.js'
+    
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.11'
+      displayName: 'Install Python'
+    
+    - script: |
+        npm install -g pnpm
+      displayName: 'Install pnpm'
+    
+    - task: Cache@2
+      inputs:
+        key: 'pnpm | "$(Agent.OS)" | frontend/package-lock.json'
+        restoreKeys: |
+          pnpm | "$(Agent.OS)"
+        path: 'frontend/node_modules'
+      displayName: 'Cache frontend dependencies'
+    
+    - script: |
+        cd frontend
+        pnpm install
+        pnpm run build
+      displayName: 'Build Frontend'
+    
+    - script: |
+        cd backend
+        pip install -r requirements.txt
+      displayName: 'Install Backend Dependencies'
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: '$(Build.SourcesDirectory)'
+        artifactName: 'drop'
+
+- stage: Deploy
+  displayName: 'Deploy to Azure'
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployJob
+    displayName: 'Deploy to Azure App Service'
+    environment: 'production'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appName: '$(appName)'
+              package: '$(Pipeline.Workspace)/drop'
+              appSettings: |
+                -GEMINI_API_KEY $(GEMINI_API_KEY)
+                -SCRAPINGDOG_API_KEY $(SCRAPINGDOG_API_KEY)
+                -GITHUB_TOKEN $(GITHUB_TOKEN)
+                -OPENROUTER_API_KEY $(OPENROUTER_API_KEY)
+                -AZURE_ENDPOINT $(AZURE_ENDPOINT)
+                -AZURE_MODEL $(AZURE_MODEL)
+                -AZURE_TOKEN $(AZURE_TOKEN)
+                -SUPABASE_URL $(SUPABASE_URL)
+                -SUPABASE_ANON_KEY $(SUPABASE_ANON_KEY)
+                -SUPABASE_SERVICE_KEY $(SUPABASE_SERVICE_KEY)

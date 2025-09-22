@@ -1,0 +1,414 @@
+{
+    "jobs_results": [
+        {
+            "title": "Barista | London",
+            "company_name": "Blank Street",
+            "location": "London, UK",
+            "via": "via Greenhouse",
+            "description": "About Blank Street\n\nAt Blank Street, we believe great coffee should be an everyday ritual. With shops across London, Brooklyn, Manhattan, Boston and DC, we’re the first-ever brand to offer affordable high-quality coffee.\n\nBlank Street originated in an effort to change the specialty coffee status quo. Starting with small-format shops and continuing with a limited menu and top-of-the-line tech, we’ve always been focused on simplifying the coffee experience. We partner with amazing local vendors and brands, and have some of the best baristas out there on our team.\nLove coffee and customer service? Keep reading.\n\nWhat's Brewing...\n\nBaristas at Blank Street must be able to work independently, while also thriving in a team environment. The right person for this role is a proven people-person, taking pride in giving amazing service experiences. You are customer-centric and believe in serving a carefully curated menu with passion and precision, making every effort to give your customers... exactly what they need, every day, in their way.\n\nOur Values\n• Magic is in the Details: in everything we do we value attention to detail, going the extra mile & thinking about everything that makes a moment meaningful\n• Move as One: We look for inclusive and respectful team members who strive to be the best team player & who over-communicates to ensure understanding\n• “My House is your House” Hospitality: We look for individuals who welcome guests into the cafe the same way they would invite in a friend, who are obsessed with presentation, making sure our cafes are always clean and welcoming & who provide stellar service, even when things are busy or stressful\n\nWho you are:\n• A friendly and enthusiastic team player with a passion for excellent customer service; you’re always ready to make your customers’ day\n• A reliable employee who is able to effectively manage time and priorities, including during busy rush periods where a sense of urgency is necessary\n• Passionate about creating delicious coffee and other cafe beverages\n• A strong independent problem solver with proven multi-tasking and communication skills\n• Someone who is curious, adaptable and always willing to learn\n• Comfortable working in a team or independently\n• Comfortable maintaining store safety\n\nWhat you'll own:\n• Delight our customers with consistent, welcoming and engaging customer service, taking the opportunity to turn every customer into a regular\n• Work within a world-class coffee program using the best coffee equipment (the Eversys cameos and shot masters) and products in the industry to prepare the tastiest drinks\n• Complete all training to ensure proper measures are in place to achieve the correct handling of food and beverage to retain its freshness and quality\n• Have systems in place to avoid wastage of product with both food and beverage, following and adjusting par levels where needed in line with business peaks and lows\n• Adhere to Health and Safety Regulations and Food Safety Standards at all times\n• Full and complete knowledge and adherence to all product, service and brand training playbooks\n• Participates in all initiatives with the Operations and marketing teams to increase foot traffic, new customers, daily sales, and operational profitability and develop a loyal neighbourhood customer base\n\nRequirements:\n• Experience in the customer service or hospitality industry\n• Availability that meets the needs of our cafes\n• Part-Time: 24 hours per week, 3 days of availability required and must be available to work 2 peak days (Peak days: Friday, Saturday, Sunday)\n• Full Time: 35 hours per week, 4-5 days of availability required and must be available to work 2 peak days (Peak days: Friday, Saturday, Sunday)\n• Weekend and holiday availability preferred\n• You must be authorised to work in the UK\n\nPerks:\n• £12.00 - £13.00\n• Industry-leading pay, bi-weekly payments, pension scheme\n• Barista training program and exciting growth opportunities\n• Unlimited drinks and free food - when on shift\n• 50% off all drinks and food - when you are off your shift\n• Great work-life balance\n• Referral incentive scheme - £250 when you refer a friend\n\nApplication & Interview Process:\n• Online Questionnaire\n• Recruiter Phone Interview\n• Hiring Manager In-Person Interview\n• Offer",
+            "url": "https://www.google.com/search?ibp=htl;jobs&q=jobs+in+london&htidocid=5efcMuKLmz4lae9WAAAAAA%3D%3D&hl=en-US&kgs=1a84be9da335179c&shndl=-1&shem=ssic&source=sh/x/im/textlists/detail/m1/1#fpstate=tldetail&htivrt=jobs&htiq=jobs+in+london&htidocid=5efcMuKLmz4lae9WAAAAAA%3D%3D",
+            "extensions": [
+                "Full-time and Part-time",
+                "No degree mentioned"
+            ],
+            "apply_links": [
+                {
+                    "title": "Apply on Greenhouse",
+                    "link": "https://boards.greenhouse.io/blankstreet/jobs/5210435003?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on LinkedIn",
+                    "link": "https://uk.linkedin.com/jobs/view/barista-london-at-blank-street-3667913102?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Monster.co.uk",
+                    "link": "https://www.monster.co.uk/job-openings/barista-london-eng--4c52d2ff-80e3-48a4-ae79-0e6935f36fd6?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Left Lane Job Board",
+                    "link": "https://jobs.leftlanecap.com/companies/blank-street/jobs/15383388-barista-london?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Base10 Job Board",
+                    "link": "https://careers.base10.vc/companies/blank-street/jobs/15383388-barista-london?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on General Catalyst Job Board",
+                    "link": "https://jobs.generalcatalyst.com/companies/blank-street/jobs/15383388-barista-london?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Talentify",
+                    "link": "https://www.talentify.io/job/barista-london-england-blank-street-5210435003?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on ZipRecruiter UK",
+                    "link": "https://www.ziprecruiter.co.uk/jobs/321842903-barista-london-at-blank-street?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+            ]
+        },
+        {
+            "title": "Events & Digital Content Officer",
+            "company_name": "London School of Economics and Political Science",
+            "location": "London, UK",
+            "via": "via Jobs.ac.uk",
+            "description": "LSE is committed to building a diverse, equitable and truly inclusive university\n\nSalary from £33,558 to £38,541 pa inclusive with potential to progress to £41,404 pa inclusive of London allowance\n\nThe Department of Social Policy is a dynamic, innovative department located at the heart of the School. It is home to around 400 students and 30 faculty. It is the highest-ranked Social Policy Department in the UK for teaching and research and incorporates several internationally renowned research units.\n\nThe Department is looking for an experienced and enthusiastic professional to join its professional services team in this new role. The successful candidate will provide key operational support in the organisation and delivery of the Department’s large and diverse portfolio of events, as well as playing a central role in supporting its digital communication channels and coordinating student-facing communications.\n\nCandidates should have:\n• Education to degree level or equivalent, or... significant relevant work experience, preferably in a communications role in higher education.\n• Knowledge of social media trends and best practices.\n• Excellent oral and written communication skills, including grammatical accuracy and the ability to adapt content and style to a specific audience.\n• The ability to work effectively with limited supervision.\n• Proven commitment to an ethos of continuous improvement.\n• Outstanding attention to detail.\n\nThe role is available from 2 September 2024.\n\nWe offer an occupational pension scheme, generous annual leave, hybrid working, and excellent training and development opportunities.\n\nFor further information about the post, please see the how to apply document, job description and the person specification.\n\nTo apply for this post, please click the 'Apply' button above. If you have any technical queries with applying on the online system, please use the “contact us” links at the bottom of the LSE Jobs page. Should you have any queries about the role, please email socialpolicy.recruitment@lse.ac.uk.\n\nThe closing date for receipt of applications is 17 June 2024 (23.59 UK time). Regrettably, we are unable to accept any late applications.\n\nInterviews will take place in person and are scheduled for 5 July 2024.\n\n£33,558 to £38,541 pa inclusive with potential to progress to £41,404 pa inclusive of London allowance",
+            "url": "https://www.google.com/search?ibp=htl;jobs&q=jobs+in+london&htidocid=5efcMuKLmz4lae9WAAAAAA%3D%3D&hl=en-US&kgs=1a84be9da335179c&shndl=-1&shem=ssic&source=sh/x/im/textlists/detail/m1/1&ibp=htl;jobs&htidocid=0C-6w-k4jhzV_KjxAAAAAA%3D%3D#fpstate=tldetail&htivrt=jobs&htiq=jobs+in+london&htidocid=0C-6w-k4jhzV_KjxAAAAAA%3D%3D",
+            "extensions": [
+                "2 days ago",
+                "£33,558–£38,541 a year",
+                "Full-time"
+            ],
+            "apply_links": [
+                {
+                    "title": "Apply on Jobs.ac.uk",
+                    "link": "https://www.jobs.ac.uk/job/DHT126/events-and-digital-content-officer?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Adzuna",
+                    "link": "https://www.adzuna.co.uk/jobs/details/4721164411?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+            ]
+        },
+        {
+            "title": "Runner - Summer Project - London",
+            "company_name": "Adecco",
+            "location": "London, UK",
+            "via": "via Adecco",
+            "description": "Runner\n\nWe are hiring team members to support a variety of bespoke accommodation sites throughout the UK.\n\nEach summer, we upgrade and prepare our locations ready for our residents. As part of the summer team, you will be assisting the on-site team get our vibrant and modern accommodation prepared and in great shape to welcome our students in September.  \n\nThe Package.\n• Location: London\n• Hours: 9am - 5pm\n• Working Pattern: Full and Part time available\n• Rate of Pay: £11.44\n• Duration: July - September\n\nFlexible Scheduling - we will be offering a variety of shifts; you can work shifts that suit your requirements.\n\nIf you have a strong Customer Service background and are excited about working with our customers, then this could be the perfect opportunity for you!\n\nHere's a bit about the job.\n• Working as part of the dedicated on-site team to make sure the students who stay with us always feel at home\n• You will be assisting with the move-in and move-out process to ensure smooth... running\n• Getting involved with all on-site teams to complete turnaround of the rooms and shared areas by working with housekeeping, maintenance, and front of house\n• Ensuring rooms and shared areas are clean, well-presented and have all the items they need\n• Logging maintenance requests, H&S hazards and stock requests as required.\n• As well as any other tasks that need to be completed onsite.\n\nBenefits\n• Annual leave allowance\n• Weekly pay cycle\n• Easy online timesheet and payslip system\n• Pension Scheme\n• Employee Benefits including Eye Care Vouchers, corporate discounts and more  \n• Employee Assistance Programme\n• Dedicated inbox to assist you with any questions\n\nWhat are we looking for?\n• Experience:\n• People who are dedicated and passionate about customer service, and working with high attention to detail\n• You need to be hands-on and ready to get stuck into all kinds of tasks.\n• You will be on your feet a lot of the day and will be moving around the site throughout your shift\n• Able to work in a safe and compliant manner\n\nApply today! and join our client's organisation as they continue to lead the industry with exceptional student accommodation.\n\nWe'll make an effort to reach out to you concerning your application. However, due to the volume of applicants, we may not be able to contact everyone. If you haven't heard from us within 14 days, please consider your application unsuccessful.\n\nAdecco is an employment consultancy. We put expertise, energy, and enthusiasm into improving everyone's chance of being part of the workplace. We respect and appreciate people of all ethnicities, generations, religious beliefs, sexual orientations, gender identities, and more. We do this by showcasing their talents, skills, and unique experience in an inclusive environment that helps them thrive\n\nAdecco is a disability-confident employer. It is important to us that we run an inclusive and accessible recruitment process to support candidates of all backgrounds and all abilities to apply. Adecco is committed to building a supportive environment for you to explore the next steps in your career. If you require reasonable adjustments at any stage, please let us know and we will be happy to support you.\n\nAdecco acts as an employment agency for permanent recruitment and an employment business for the supply of temporary workers. The Adecco Group UK & Ireland is an Equal Opportunities Employer.\n\nBy applying for this role your details will be submitted to Adecco. Our Candidate Privacy Information Statement explains how we will use your information - please copy and paste the following link in to your browser https://www.adecco.co.uk/candidate-privacy",
+            "url": "https://www.google.com/search?ibp=htl;jobs&q=jobs+in+london&htidocid=5efcMuKLmz4lae9WAAAAAA%3D%3D&hl=en-US&kgs=1a84be9da335179c&shndl=-1&shem=ssic&source=sh/x/im/textlists/detail/m1/1&ibp=htl;jobs&htidocid=0C-6w-k4jhzV_KjxAAAAAA%3D%3D&ibp=htl;jobs&htidocid=QRc92njKAC4thcR_AAAAAA%3D%3D#fpstate=tldetail&htivrt=jobs&htiq=jobs+in+london&htidocid=QRc92njKAC4thcR_AAAAAA%3D%3D",
+            "extensions": [
+                "1 day ago",
+                "Full-time and Part-time",
+                "No degree mentioned"
+            ],
+            "apply_links": [
+                {
+                    "title": "Apply on Adecco",
+                    "link": "https://www.adecco.co.uk/Job/runner-summer-project-london-city-of-london-temporary-broadbean144791717433231-hospitality-tourism-travel?ID=4965f6f3-d3b0-4e74-b472-e4816916fe12&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on LinkedIn",
+                    "link": "https://uk.linkedin.com/jobs/view/runner-summer-project-london-at-adecco-3940972931?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Learn4Good",
+                    "link": "https://www.learn4good.com/jobs/london/uk/retail/3232166049/e/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+            ]
+        },
+        {
+            "title": "Food Runner",
+            "company_name": "Dishoom",
+            "location": "London, UK",
+            "via": "via Dishoom Careers",
+            "description": "We are proud to be recognised as one of the best places to work in Hospitality. Looking after people is at the core of what we do and we work hard to make life at Dishoom the best it can be. Since 2010, our restaurants have celebrated the Irani cafes and all of the food and drink of Bombay. We have locations across London, Edinburgh, Manchester, Birmingham and our Bar-Cafes in Brighton and Cambridge. Plus, a range of kitchens to ensure our guests can enjoy our food at home!\n\nAs well as running busy sites with big teams, we also understand the importance of doing more. From planting trees with our teams in the UK & India, tying Rakhis with our guests, to our dedication to helping to feed children through Meal for a Meal. As of January 2024, we have donated 20 million meals (and counting) to children in the UK and India. As a Dishoomwalle, you contribute 55 meals per shift to this cause.\n\nHow we’ll support you\n\nAt Dishoom, we care about supporting you and your well-being (inside and... outside of work). With this, we tend to think about our team’s well-being in four different ways:\n\nFinancial\n\nFree weekly wage advances and emergency cash.\n\nAccess to our savings support & financial health planning tool.\n\nUp to 50% off when dining at Dishoom with friends and family.\n\nMental\n\nAll Babus (Managers) are fully trained in mental health support & First Aid.\n\nDedicated support from our confidential advice helpline - available to you or someone in your household – 24 hours a day, 365 days of the year.\n\nPhysical\n\nFree fitness sessions every month (including yoga and spin classes). Plus, discounted memberships with leading gyms and studios.\n\nCalling all cricket fans, we have our very own Dishoom Premier League (an in-house cricket tournament) where you get to compete with your team at Lord’s.\n\nSocial\n\nWe’re a growing company and love nothing more than bringing our teams (and families) together to celebrate everyone’s hard work across the year.\n\nYou’ll be invited to our:\n• Family Mela (Family summer festival)\n• Huge Christmas celebration\n\nPlus, we host regular team events across our cafes.\n\n﻿\n\nTeam members who work at Dishoom for 5 years are invited to attend Bombay Bootcamp – an incredible once-in-a-lifetime guided tour of Bombay with our co-founders (over 200 people attended last year)!\n\nWhat to expect:\n• Free team meals every shift, plus all the Chai you can drink!\n• £13.75 - £14 per hour inclusive of tronc (based on the last 3-month’s average across our London cafes). We pay on a monthly basis.\n• A full-time role working across 5 days, Monday - Sunday availability required.\n• A weekly changing rota provided at least 10 days in advance.\n• We're an all day dining Cafe, meaning our teams work a variety of daytime and evening shifts (not the usual always late nights!)\n• Access to our award-winning training programmes and support. We focus on your development from day one and proudly promoted 211 Dishoomwalles last year!\n• The usual number of days holiday a year - paid for, including tronc. Our sites are closed Christmas Day and Boxing Day, and if you have children, we’ll provide one extra day to take them to their first day at school.\n• No uniforms here - smart casual and comfortable is key, and of course trainers are fine.\n\nHave you got Seva?\n\nIn Dishoom, we see every team member as valuable and important to ensuring the all-around brilliant experience for our guests. We are looking for curious, energetic and helpful people to join our team as Food Runners.\n\nOur Food Runners:\n• Deliver huge trays of food and drink to all of our guests, dealing with any special requests (e.g. allergies), and alway make sure we have everything we need for a smooth shift!\n• Work in a very big and busy environment. In Dishoom you can easily total an average step count of just over 20,000 steps per shift.\n\nIn return, we’ll ensure you’re always supported on shift, with a number of Babus (Managers) plus 40-50 other Dishoomwalles all working together.\n\nSo what are we looking for?\n• If you haven’t worked in hospitality before, no problem, we’ll provide the right training and support to set you up for success.\n• Previous work experience in a role - minimum 6 months is preferred - any industry.\n• A willingness to learn about food, drink and looking after people (guest and team alike).\n\nAt Dishoom - everyone is welcome. We are committed to having an inclusive and diverse workplace and strongly encourage people from all backgrounds, identities, and experiences to apply for roles with us.\n\nFood & Beverage, Front of House, Hospitality, F&B Assistant, Food Server, Food Service Assistant, Commis Waiter, Team Member",
+            "url": "https://www.google.com/search?ibp=htl;jobs&q=jobs+in+london&htidocid=5efcMuKLmz4lae9WAAAAAA%3D%3D&hl=en-US&kgs=1a84be9da335179c&shndl=-1&shem=ssic&source=sh/x/im/textlists/detail/m1/1&ibp=htl;jobs&htidocid=0C-6w-k4jhzV_KjxAAAAAA%3D%3D&ibp=htl;jobs&htidocid=QRc92njKAC4thcR_AAAAAA%3D%3D&ibp=htl;jobs&htidocid=L0LBL1-nW-FSlH2KAAAAAA%3D%3D#fpstate=tldetail&htivrt=jobs&htiq=jobs+in+london&htidocid=L0LBL1-nW-FSlH2KAAAAAA%3D%3D",
+            "extensions": [
+                "2 days ago",
+                "£13.50–£14.00 an hour",
+                "Full-time",
+                "No degree mentioned"
+            ],
+            "apply_links": [
+                {
+                    "title": "Apply directly on Dishoom Careers",
+                    "link": "https://jobs.dishoom.com/job/4Sq4Q0JYggGqPkKX5gHI3?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Glassdoor",
+                    "link": "https://www.glassdoor.co.uk/job-listing/food-runner-dishoom-JV_IC2671300_KO0,11_KE12,19.htm?jl=1009160159104&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on BeBee",
+                    "link": "https://gb.bebee.com/job/c9a3b912549c100d359eb99bb6f52251?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Breakroom",
+                    "link": "https://www.breakroom.cc/en-gb/jobs/listing/63233007-dishoom-food-runner-london?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Jooble",
+                    "link": "https://uk.jooble.org/jdp/-383270544102530155?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Adzuna",
+                    "link": "https://www.adzuna.co.uk/jobs/details/4597026406?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Jobrapido.com",
+                    "link": "https://uk.jobrapido.com/jobpreview/782898697?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Star Job Search",
+                    "link": "https://starjobsearch.co.uk/jobs/food-runner-london-london/1344609998-2/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+            ]
+        },
+        {
+            "title": "Senior Manager: Field Development UK",
+            "company_name": "Equinix",
+            "location": "London, UK",
+            "via": "via Career - Equinix",
+            "description": "Who are we?\n\nEquinix is the world’s digital infrastructure company®, operating over 250 data centers across the globe. Digital leaders harness Equinix's trusted platform to bring together and interconnect foundational infrastructure at software speed. Equinix enables organizations to access all the right places, partners and possibilities to scale with agility, speed the launch of digital services, deliver world-class experiences and multiply their value, while supporting their sustainability goals.\n\nA career at Equinix means you will collaborate on work that impacts the world and be surrounded by endless opportunities to learn new skills and grow in varied directions. We embrace diversity in thought and contribution and are committed to providing an equitable work environment that is foundational to our core values as a company and is vital to our success. \n\nSenior Manager: Field Development UK\n\nJob Summary\n\nThe Senior Manager, Field Development sits within the EMEA Segment Marketing... team, reporting to the Director of Segment Marketing; EMEA.\n\nSegment Marketing is regionally mapped and globally aligned within the CRO organization. 5 Subject Matter Experts (SME’s) support the EMEA region and enable the company’s pursuit activation strategy across both Field Sales (Direct) and Channel/Partner (Indirect) Routes to Market.\n\nThis specific role focuses on the UK, the largest EMEA (FLAP) market in terms of annual revenue contribution ($15M+) and quota bearing heads (QBH’s). It will be the primary interface for the UK based Field Sales & Channel Teams.\n\nResponsibilities\n\nIndividually\n• Direct and develop pursuit planning activities that support prospective and existing customer GTM motions on a priority set of accounts aligned with UK Sales Stakeholders\n• Interact with and enable Field Account Owners and Partner Sales Managers on Account focused activities\n• Deliver data driven transformation recommendations within customer facing meetings and Digital Strategy Briefings\n• Understand, articulate and position Equinix value propositions to relevant end-users/markets\n• Continuously communicate and validate our insights and strategy publicly with Customers, Events/Panels, AR & PR.\n• Support Corporate, Product, & Partner Marketing activities with Segment & SME perspectives.\n• Grow knowledge of global transformation trends that will support the uptake of any client solution\n• Collaborate & knowledge share with regional FD counterparts.\n\nOrganizational & Key Stakeholder Interlocks\n\nSales & Overlay Teams\n• UK Field Sales Teams\n• UK Partner Sales Managers\n• Digital Services Specialists\n• Revenue Operations\n• GTST (Global Technical Sales)\n• Business Development\n• Sales Enablement\n• Customer Care\n\nMarketing\n• EMEA Field Marketing\n• EMEA Partner Marketing\n• Product & Solution Marketing\n• Marketing & Operations\n• Communications (public and analyst relations)\n\nTechnologies Supporting the Role\n• Business intelligence tools (SFDC, Tableau, Smartsheet)\n• Cross functional collaboration\n\n​Qualifications\n• Bachelor's degree or equivalent required\n• Proven years of Direct Sales/Partner Sales/Business Development experience, ideally with a Digital Transformation bias\n• Proven years experience associated with Cloud, SaaS & Information Technology Industries\n• Proven years of experience in pre-sales, consulting, sales or a solution/industry marketing function\n• Understanding of digital transformation needs across industry verticals will be an added advantage\n\nCompetencies\n\nSkills\n• Talent for Sales knowledge transfer & building trusted relationships with Sales and external customers\n• Ability to communicate complex topics into relevant customer facing language\n• Cross-organizational system thinking & design\n• Gaining senior leadership trust and confidence\n• Can work with higher level concepts and bring them to operational execution\n• Public speaking and debating (media confident/trained)\n• Strong storytelling, messaging, writing/presentation building\n• Leadership & Program Management\n\nBehaviors\n• Trusted Partner\n• Delivers as promised\n• Strong communicator\n• Rational/logical\n• Accountable\n• Flexible/adaptable\n• Collaborative\n• Detail-oriented\n• Service-oriented\n\nKnowledge\n• Digital Business & Digital Ecosystems\n• Organizational system design\n• Selling techniques and best practices for large & small companies\n• Trends and Data Analysis\n• Data management tools and best practices, within and outside of marketing\n\nEquinix is committed to ensuring that our employment process is open to all individuals, including those with a disability. If you are a qualified candidate and need assistance or an accommodation, please let us know by completing this form.\n\nEquinix is an Equal Employment Opportunity and, in the U.S., an Affirmative Action employer. All qualified applicants will receive consideration for employment without regard to unlawful consideration of race, color, religion, creed, national or ethnic origin, ancestry, place of birth, citizenship, sex, pregnancy / childbirth or related medical conditions, sexual orientation, gender identity or expression, marital or domestic partnership status, age, veteran or military status, physical or mental disability, medical condition, genetic information, political / organizational affiliation, status as a victim or family member of a victim of crime or abuse, or any other status protected by applicable law",
+            "url": "https://www.google.com/search?ibp=htl;jobs&q=jobs+in+london&htidocid=5efcMuKLmz4lae9WAAAAAA%3D%3D&hl=en-US&kgs=1a84be9da335179c&shndl=-1&shem=ssic&source=sh/x/im/textlists/detail/m1/1&ibp=htl;jobs&htidocid=0C-6w-k4jhzV_KjxAAAAAA%3D%3D&ibp=htl;jobs&htidocid=QRc92njKAC4thcR_AAAAAA%3D%3D&ibp=htl;jobs&htidocid=L0LBL1-nW-FSlH2KAAAAAA%3D%3D&ibp=htl;jobs&htidocid=aB60gtmRSSrKO0srAAAAAA%3D%3D#fpstate=tldetail&htivrt=jobs&htiq=jobs+in+london&htidocid=aB60gtmRSSrKO0srAAAAAA%3D%3D",
+            "extensions": [
+                "11 hours ago",
+                "Full-time"
+            ],
+            "apply_links": [
+                {
+                    "title": "Apply on Career - Equinix",
+                    "link": "https://careers.equinix.com/jobs/senior-manager-field-development-uk-london-united-kingdom?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Indeed",
+                    "link": "https://uk.indeed.com/viewjob?jk=9fd7f6d5130f35ac&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply directly on Forces Families Jobs",
+                    "link": "https://www.forcesfamiliesjobs.co.uk/jobs/senior-manager-field-development-uk-london/1857981-1/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Monster.co.uk",
+                    "link": "https://www.monster.co.uk/job-openings/senior-manager-field-development-uk-london-greater-london--9d45dd38-1d1c-436b-a866-2e23e96b4a9b?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on SimplyHired",
+                    "link": "https://www.simplyhired.co.uk/job/NRrFKqyYqSZH8_MpKCV6vfaiauE1tQCesfMcY-4USGxo5LFk_pkGRQ?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Talentify",
+                    "link": "https://www.talentify.io/job/senior-manager-field-development-uk-london-england-equinix-jr-145464?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Jobrapido.com",
+                    "link": "https://uk.jobrapido.com/jobpreview/783039046?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Talent.com",
+                    "link": "https://uk.talent.com/view?id=3bbabd676b02&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+            ]
+        },
+        {
+            "title": "Client Host - London Stores",
+            "company_name": "Hermès GB",
+            "location": "London, UK",
+            "via": "via Hermès - Hermes",
+            "description": "First impressions are very important, especially here at Hermes, it’s therefore essential that our greeter provides the first welcome in a warm and sincere manner, maintaining a positive and professional attitude, is highly efficient and courteous, ensuring customer service levels are kept to a very high standard at all times, ensuring their journey begins seamless and in line with our standards.\n\nMain duties will be dedicated to the 1st floor Metiers, although at times supervision of the ground floor may be required during busier periods.",
+            "url": "https://www.google.com/search?ibp=htl;jobs&q=jobs+in+london&htidocid=5efcMuKLmz4lae9WAAAAAA%3D%3D&hl=en-US&kgs=1a84be9da335179c&shndl=-1&shem=ssic&source=sh/x/im/textlists/detail/m1/1&ibp=htl;jobs&htidocid=0C-6w-k4jhzV_KjxAAAAAA%3D%3D&ibp=htl;jobs&htidocid=QRc92njKAC4thcR_AAAAAA%3D%3D&ibp=htl;jobs&htidocid=L0LBL1-nW-FSlH2KAAAAAA%3D%3D&ibp=htl;jobs&htidocid=aB60gtmRSSrKO0srAAAAAA%3D%3D&ibp=htl;jobs&htidocid=t8Culi7On2bFToyWAAAAAA%3D%3D#fpstate=tldetail&htivrt=jobs&htiq=jobs+in+london&htidocid=t8Culi7On2bFToyWAAAAAA%3D%3D",
+            "extensions": [
+                "Temp work",
+                "No degree mentioned"
+            ],
+            "apply_links": [
+                {
+                    "title": "Apply on Hermès - Hermes",
+                    "link": "https://talents.hermes.com/en/opportunities/240429en-client-host-london-stores/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Glassdoor",
+                    "link": "https://www.glassdoor.co.uk/job-listing/client-host-london-stores-herm%C3%A8s-gb-JV_IC2671300_KO0,25_KE26,35.htm?jl=1008941133323&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on LinkedIn",
+                    "link": "https://uk.linkedin.com/jobs/view/client-host-london-stores-at-holding-textile-herm%C3%A8s-3918624971?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Indeed",
+                    "link": "https://uk.indeed.com/viewjob?jk=166dc0ff778f9317&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Fashion Jobs",
+                    "link": "https://uk.fashionjobs.com/job/Client-host-london-stores,7158254.html?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on SimplyHired",
+                    "link": "https://www.simplyhired.co.uk/job/6ZwzrDPVdp76f7nvUuq0mkRKlB62QYR2xBOL0R9Yg17R3TxTM2gi6w?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply directly on Job Vacancies",
+                    "link": "https://jobs.insert.lk/job/client-host-london-stores-jobs-in-london/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+            ]
+        },
+        {
+            "title": "North London Open Spaces Ranger x5",
+            "company_name": "City of London",
+            "location": "London, UK",
+            "via": "via Environment Job",
+            "description": "North London Open Spaces – Ranger x5\n\nLocation: Golders Hill Park, Hampstead Heath (inc. West Heath), Highgate Wood, Queen’s Park,\nand Parliament Hill\n\nWe are pleased to announce that we are expanding our North London Open Spaces Team.\n\nDo you excel working in a fast-paced, outdoor, all-weather environment? Do you enjoy performing\ngrounds maintenance and conservation tasks to high standards? Are you a good team leader? Are\nyou willing to continue progressing in your skill sets and grounds maintenance knowledge?\n\nAbout Us\n\nThe City of London Corporation manages 11,000 acres (approximately 4,500 hectares) of land in\nand around London that is enjoyed by over 16 million visitors annually. Whilst there are small\npockets of land within the Square Mile, the majority can be found elsewhere in London and the\nsurrounding counties. The City Corporation acts as Trustee of 10 charities which, through their\nvarious objects, are responsible for the preservation in perpetuity of a large proportion... of\nthese award-winning open spaces.\n\nThe Role\n\nThe Ranger is the frontline face of our open spaces and critical to ensuring a safe, welcoming\ncustomer experience to all users and maintaining the high standards required for the Green Flag\nAward and other nationally recognised standards. The Ranger will play a dynamic role in\nsupporting existing teams to keep the parks clean and safe, engaging with visitors and\ncommunity groups, continuing with the upkeep of sports pitches and facilities, and supporting\nevents and entertainment across the department. The Ranger will have team leading\nresponsibilities and will be expected to work collaboratively with the Senior Ranger in\nplanning the tasks for the team. This is an exciting and fast-paced role working in one of\nLondon’s most unique open spaces where no two days are alike.\n\nThe Ideal Candidate\n\nYou have a full, clean UK driving licence. You have GCSE English and Maths, as well as an NVQ\nin Sport Turf Management, Woodland Management, Environmental Conservation or similar depending\non the site, or relevant experience. You have a good understanding of Health & Safety\nwithin a work environment. You have the relevant certification to operate machinery and tools.\nYou will have demonstrable experience working in a fast-paced open spaces environment or a\nsimilar field. You have good communication skills, can follow company policies and procedures,\nand provide accurate written and verbal updates to your line manager. You show initiative and\nwork well in a team. You are flexible, calm under pressure, and have a can-do approach to\nworking outdoors.\n\nBenefits Include\n• Competitive salary starting at £40,000 including inner London Weighting, depending on\nexperience (with clear incremental progress points).\n• 24 days’ annual leave plus public holidays (or time in lieu where applicable).\n• Pension scheme is operated in accordance with Local Government Pension Scheme.\n• Employee assistance programmes including mental wellbeing support.\n• Bicycle loan scheme.\n• Travel card scheme.\n\nClosing date: 12 noon on 14 June 2024.\n\nTo apply online please click the apply button.\n\nAlternatively, please contact 020 7332 3978 (24 hr answerphone). A minicom service for the\nhearing impaired is available on 020 7332 3732.\n\nThis role requires a Basic Disclosure & Barring Service check.\n\nThe City of London Corporation is committed to Equal Opportunities and welcomes applications\nfrom all sections of the community",
+            "url": "https://www.google.com/search?ibp=htl;jobs&q=jobs+in+london&htidocid=5efcMuKLmz4lae9WAAAAAA%3D%3D&hl=en-US&kgs=1a84be9da335179c&shndl=-1&shem=ssic&source=sh/x/im/textlists/detail/m1/1&ibp=htl;jobs&htidocid=0C-6w-k4jhzV_KjxAAAAAA%3D%3D&ibp=htl;jobs&htidocid=QRc92njKAC4thcR_AAAAAA%3D%3D&ibp=htl;jobs&htidocid=L0LBL1-nW-FSlH2KAAAAAA%3D%3D&ibp=htl;jobs&htidocid=aB60gtmRSSrKO0srAAAAAA%3D%3D&ibp=htl;jobs&htidocid=t8Culi7On2bFToyWAAAAAA%3D%3D&ibp=htl;jobs&htidocid=Ufy1qRhHOC6pKe0UAAAAAA%3D%3D#fpstate=tldetail&htivrt=jobs&htiq=jobs+in+london&htidocid=Ufy1qRhHOC6pKe0UAAAAAA%3D%3D",
+            "extensions": [
+                "4 days ago",
+                "£40,000–£44,366 a year",
+                "Full-time"
+            ],
+            "apply_links": [
+                {
+                    "title": "Apply on Environment Job",
+                    "link": "https://www.environmentjob.co.uk/jobs/101472-north-london-open-spaces-ranger-x5?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Jooble",
+                    "link": "https://uk.jooble.org/jdp/-1758362756474835394?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Adzuna",
+                    "link": "https://www.adzuna.co.uk/jobs/details/4715491108?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Jora UK",
+                    "link": "https://uk.jora.com/job/Ranger-28a0c0060a7b14ef7fe88768b60d757b?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Jobs Near Me",
+                    "link": "https://nearmejobs.eu/job/north-london-open-spaces-ranger-x5/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Europe - Vacancies In Europe",
+                    "link": "https://vacanciesin.eu/job/north-london-open-spaces-ranger-x5/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+            ]
+        },
+        {
+            "title": "- London",
+            "company_name": "Five Guys",
+            "location": "London, UK",
+            "via": "via LinkedIn",
+            "description": "• London\n\nCrew Member\n\nBurgers & Fries and Incredible Careers! We’re the burger restaurant with the uncomplicated formula: burgers and fries cooked to perfection, with no frozen ingredients. And we’ve stuck to the same ‘perfect and serve’ philosophy since our family business began in 1986.\n\nThese days, we’re still just as much a family as we always have been. We have tons of integrity, we’re enthusiastic. we’re competitive and we just get it done – whatever the challenge.\n\nYOUR PAY\n\nUnder 18 £10.70 - £11.70 per hour depending on where you are located\n\n18 and over £11.65 - £12.80 per hour depending on where you are located\n\nREWARDS\n• Earn As You Learn – increase your hourly rate by up to 40p\n• Secret Shopper – a bonus which can add up to £1 per hour\n• Long service Love2Shop voucher reward - 5 years £500, 10 years £1,000\n• Paid breaks\n• Free meal on shift\n• 28 days paid holiday (pro-rata if you're part-time)\n\nOther Awesome Perks\n• Days out and social events\n• Team competitions – “Fry... Cup” and “Olympics”\n• Crew member of the month and quarter\n• Enhanced Maternity & Paternity Leave\n• Five Guys Perks – employee discount program\n• Awesome Five Guys Merch\n• Pension scheme\n• Development opportunities to grow a career with us!\n\nYou'll Be Enthusiastic About\n• People\n• Quality Food\n• Customer Service\n• Our values; Competitive, Enthusiastic, Family, Get It Done and Integrity\n\nWhat You'll Be Doing\n• Ensuring we are delivering excellent customer service and serving perfect burgers and fries – after all, it is what were famous for!\n• We encourage our crew to work on all stations from Till to the Grill, so be ready to work hard.\n• You’ll need communicate and work together as a team to get the job done.\n• To get the restaurant set up for success, we prep first thing in the morning and by night we are cleaning the restaurant back to new! Meaning we can offer contracted hours to suit you – No 0-hour contracts here!\n\nINCREDIBLE CAREERS WITH FIVE GUYS\n• If you are ambitious and want to grow - we can provide you with support and the right tools to build a career with us.\n• Over 70% of our managers have been internally promoted with many joining as a Crew Member.\n• Five Guys isn’t just a job – it can be a career",
+            "url": "https://www.google.com/search?ibp=htl;jobs&q=jobs+in+london&htidocid=5efcMuKLmz4lae9WAAAAAA%3D%3D&hl=en-US&kgs=1a84be9da335179c&shndl=-1&shem=ssic&source=sh/x/im/textlists/detail/m1/1&ibp=htl;jobs&htidocid=0C-6w-k4jhzV_KjxAAAAAA%3D%3D&ibp=htl;jobs&htidocid=QRc92njKAC4thcR_AAAAAA%3D%3D&ibp=htl;jobs&htidocid=L0LBL1-nW-FSlH2KAAAAAA%3D%3D&ibp=htl;jobs&htidocid=aB60gtmRSSrKO0srAAAAAA%3D%3D&ibp=htl;jobs&htidocid=t8Culi7On2bFToyWAAAAAA%3D%3D&ibp=htl;jobs&htidocid=Ufy1qRhHOC6pKe0UAAAAAA%3D%3D&ibp=htl;jobs&htidocid=pY2jVOox204y_AGlAAAAAA%3D%3D#fpstate=tldetail&htivrt=jobs&htiq=jobs+in+london&htidocid=pY2jVOox204y_AGlAAAAAA%3D%3D",
+            "extensions": [
+                "2 days ago",
+                "Part-time",
+                "No degree mentioned"
+            ],
+            "apply_links": [
+                {
+                    "title": "Apply on LinkedIn",
+                    "link": "https://uk.linkedin.com/jobs/view/london-at-five-guys-3938479164?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Adzuna",
+                    "link": "https://www.adzuna.co.uk/jobs/details/4696538609?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Jooble",
+                    "link": "https://uk.jooble.org/jdp/-5331152026298206531?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Breakroom",
+                    "link": "https://www.breakroom.cc/en-gb/jobs/listing/67086932-five-guys-crew-member-london-london-london?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Jobrapido.com",
+                    "link": "https://uk.jobrapido.com/jobpreview/781247884?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Talent.com",
+                    "link": "https://uk.talent.com/view?id=873998123d14&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Learn4Good",
+                    "link": "https://www.learn4good.com/jobs/london/uk/restaurant_and_food_service/3222926917/e/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Recruit.net",
+                    "link": "https://www.recruit.net/job/crew-member-chelsea-jobs/318BA066C8C1F17F?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+            ]
+        },
+        {
+            "title": "Marketing Manager",
+            "company_name": "universityoflondon",
+            "location": "London, UK",
+            "via": "via University Of London | Jobs",
+            "description": "The University of London\n\nThe University of London is a leading UK provider of distance and digital education internationally, offering programmes to 45,000 students in 190 countries around the world. Although proudly rooted in London, our community and impact are global.\n\nWe are a national leader in the humanities, and we promote their value to society and the economy through knowledge creation and exchange.\n\nWe are also a federation of 17 world class higher education institutions, with collaboration at the heart of our ethos. The University of London federation is a collective community of more than 240,000 learners and 50,000 staff, delivering world-leading research across all disciplines.\n\nOur passion for increasing access to education and mobilising the collective power and expertise of the federation is central to our ability to transform lives around the world and address the global challenges of the future.\n\nThe Role\n\nThe Marketing Manager will work within the Marketing team... of the University of London with responsibility to maximise student recruitment and conversion from initial enquiry through to registration. This will require devising and delivering cohort-centric conversion plans to create a truly personalised student recruitment journey for the University of London’s Institute in Paris (ULIP) and the School of Advanced Study (SAS).\n\nWorking with the Deputy Head of Marketing, the role will be a key member of the student recruitment team and will deliver, optimise, and evaluate strategic marketing plans, projects, and campaigns to meet student recruitment targets.\n\nThe post-holder will also work collaboratively with colleagues across the University and its federation members to ensure alignment and integration of plan and activities with the overall university strategy.\n\nWe are looking for an experienced marketing professional, who is both hands-on and a strategic thinker, driven by targets, with a creative approach to marketing, outstanding written and organisation skills and experience of stakeholder management.\n\nFor a full role profile, please refer to the job description below.\n\nFurther Information\n\nTo be considered for this opportunity, please submit your Application and CV (by clicking ‘apply for job’ at the bottom of this page) before the closing date at midnight on Sunday 16 June 2024.\n\nThe University will be unable to sponsor candidates for a visa for this role. Successful applicants must be able to demonstrate their right to work in the UK for the duration of their employment.\n\nThe University reserves the right to close the vacancy earlier than the published end date should it receive sufficient applications to warrant earlier shortlisting.]\n\nThe University currently operates a Hybrid Working framework involving a mix of working remotely and in the office. Typically, the majority of employees will be able to agree to work remotely for up to 60% of their working week, role dependent, however will be required to attend on specific days for training or team meetings.\n\nThe University of London is committed to promoting a diverse and inclusive working environment where we can all be ourselves and succeed. We particularly encourage applications from members of Black, Asian, and Minority Ethnic communities as this group is currently under-represented at all levels within the University. All appointments will be made on merit, based on the criteria identified in the job description.\n\nPursuing excellence in education and equal opportunities.\n\nwww.london.ac.uk",
+            "url": "https://www.google.com/search?ibp=htl;jobs&q=jobs+in+london&htidocid=5efcMuKLmz4lae9WAAAAAA%3D%3D&hl=en-US&kgs=1a84be9da335179c&shndl=-1&shem=ssic&source=sh/x/im/textlists/detail/m1/1&ibp=htl;jobs&htidocid=0C-6w-k4jhzV_KjxAAAAAA%3D%3D&ibp=htl;jobs&htidocid=QRc92njKAC4thcR_AAAAAA%3D%3D&ibp=htl;jobs&htidocid=L0LBL1-nW-FSlH2KAAAAAA%3D%3D&ibp=htl;jobs&htidocid=aB60gtmRSSrKO0srAAAAAA%3D%3D&ibp=htl;jobs&htidocid=t8Culi7On2bFToyWAAAAAA%3D%3D&ibp=htl;jobs&htidocid=Ufy1qRhHOC6pKe0UAAAAAA%3D%3D&ibp=htl;jobs&htidocid=pY2jVOox204y_AGlAAAAAA%3D%3D&ibp=htl;jobs&htidocid=0QjDilJsnDl5ko5MAAAAAA%3D%3D#fpstate=tldetail&htivrt=jobs&htiq=jobs+in+london&htidocid=0QjDilJsnDl5ko5MAAAAAA%3D%3D",
+            "extensions": [
+                "7 days ago",
+                "Full-time"
+            ],
+            "apply_links": [
+                {
+                    "title": "Apply directly on University Of London | Jobs",
+                    "link": "https://www.jobs.london.ac.uk/Job/JobDetail?JobId=2823&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Indeed",
+                    "link": "https://uk.indeed.com/viewjob?jk=57dc526fdd3973da&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Glassdoor",
+                    "link": "https://www.glassdoor.co.uk/job-listing/marketing-manager-universityoflondon-JV_IC2671300_KO0,17_KE18,36.htm?jl=1009299076641&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on SimplyHired",
+                    "link": "https://www.simplyhired.co.uk/job/wk0QNucDku2B6Qtrur9irslqLNyrK2_Uns7i1qWi_xukc3aey9QSjg?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on BeBee",
+                    "link": "https://gb.bebee.com/job/3b75aa662341b2f15d578c74a320d2dd?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Adzuna",
+                    "link": "https://www.adzuna.co.uk/jobs/details/4719564625?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on ZipRecruiter UK",
+                    "link": "https://www.ziprecruiter.co.uk/jobs/326797375-marketing-manager-at-universityoflondon?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Check-A-Salary",
+                    "link": "https://www.checkasalary.co.uk/jobs/job/marketing-manager-london-5d61a1c7868d639a4aa6b0383fd648fd-vs-0?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+            ]
+        },
+        {
+            "title": "Team Member - South East London",
+            "company_name": "Pret A Manger",
+            "location": "London, UK",
+            "via": "via Career Site",
+            "description": "Discover a world of opportunities at Pret a Manger!\n\nWe're seeking passionate individuals to join our Front of\nHouse and Kitchen teams. No experience needed – just bring your enthusiasm and\nteam spirit. Be part of a dynamic environment where you'll learn to prepare\ndelicious products and deliver outstanding customer service. Join us in\ncreating memorable moments every day. Your journey begins here! Exciting Opportunities Await!\n\nExplore our current job openings:\n• Full-time: Shifts are spread over\n5 days per week and can start as early as 5am (don’t worry, early starts mean\nearly finishes!)\n• Part-time (16 or 24 hours a week): Shifts are generally at the same time on the same days each week, whether\nit’s in the morning, over lunch, afternoon or in the evening (to work around\nyou!)\n\nAbout the pay:\n• £11.60\nto £12.85 per hour (Inclusive of weekly mystery shopper bonus of £1.25 per\nhour)*\n• Earn up to £13.35 per hour if you\nbecame Key role and up to £14.15 if you became a leader... (Inclusive of weekly\nmystery shopper bonus of £1.25 per hour)*\n\nWhat’s more…\n• Flexible Shifts\n• Free meals while you’re working\n• Club Pret Membership, with 50%\noff food and 5 free drinks a day.\n• Earn an extra £5 when you start\nto work between 3am and 5am **\n• Earn up to £200 cash when you\nsuccessfully refer a friend **\n• 28 days paid holiday (pro-rata if\nyou're part-time)\n• Your Pret Benefits – employee\ndiscount program (Retails, Food, restaurants, Gym, etc)\n• Free shoes\n• Rewards for being outstanding.\n• Pension scheme\n• Length of service reward.\n• Pret Parties\n• And more…\n\nYou want career Growth?\n• Outstanding training and\ndevelopment (Over 85% of our managers have been internally promoted with many\njoining as a Team Member).\n• Grow with us and earn\nprofessional qualifications: we offer Apprenticeships Level 3\n• Use\nof our internal ‘Opportunity Network’ to see all of our available Pret jobs both within our shops and at our Support Centre, 75B.\n\nAbout us:\n\nPret a Manger is a beloved international fast-casual restaurant chain known for its fresh, natural ingredients and commitment to providing outstanding customer experiences. With a focus on quality, sustainability, and innovation, we're dedicated to delighting our customers every day. our food is handmade in our shop kitchens throughout the day and anything we don't sell, goes to charity. Our coffee is 100% organic (and always will be) and our Coffee Fund is supporting the next generation of farmers. It's (partly) what we think makes Pret special.\n\nIf you thrive in a fast-paced\nenvironment, love working and having fun in a team, love an early morning and\nhave a passion for serving delicious food and drinks, we want to hear from you!\n• After initial training\n• *Terms and conditions apply\n\nYou want to know more about the role, benefits and Values please visit https://www.pret.co.uk/en-GB/pret-jobs",
+            "url": "https://www.google.com/search?ibp=htl;jobs&q=jobs+in+london&htidocid=5efcMuKLmz4lae9WAAAAAA%3D%3D&hl=en-US&kgs=1a84be9da335179c&shndl=-1&shem=ssic&source=sh/x/im/textlists/detail/m1/1&ibp=htl;jobs&htidocid=0C-6w-k4jhzV_KjxAAAAAA%3D%3D&ibp=htl;jobs&htidocid=QRc92njKAC4thcR_AAAAAA%3D%3D&ibp=htl;jobs&htidocid=L0LBL1-nW-FSlH2KAAAAAA%3D%3D&ibp=htl;jobs&htidocid=aB60gtmRSSrKO0srAAAAAA%3D%3D&ibp=htl;jobs&htidocid=t8Culi7On2bFToyWAAAAAA%3D%3D&ibp=htl;jobs&htidocid=Ufy1qRhHOC6pKe0UAAAAAA%3D%3D&ibp=htl;jobs&htidocid=pY2jVOox204y_AGlAAAAAA%3D%3D&ibp=htl;jobs&htidocid=0QjDilJsnDl5ko5MAAAAAA%3D%3D&ibp=htl;jobs&htidocid=3itDHDChL459Vw20AAAAAA%3D%3D#fpstate=tldetail&htivrt=jobs&htiq=jobs+in+london&htidocid=3itDHDChL459Vw20AAAAAA%3D%3D",
+            "extensions": [
+                "2 days ago",
+                "Full-time and Part-time"
+            ],
+            "apply_links": [
+                {
+                    "title": "Apply on Career Site",
+                    "link": "https://pret.csod.com/ux/ats/careersite/5/home/requisition/53558?c=pret&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on SimplyHired",
+                    "link": "https://www.simplyhired.co.uk/job/l9Kxek0bwJnQmqzCWe6U01HlXN8_jl2KFcUKtD97phcrajnjSP2nJA?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Glassdoor",
+                    "link": "https://www.glassdoor.co.uk/job-listing/team-member-south-west-london-pret-a-manger-JV_IC2671300_KO0,29_KE30,43.htm?jl=1008454167772&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Breakroom",
+                    "link": "https://www.breakroom.cc/en-gb/jobs/listing/spi-40955714-pret-team-member-london-night-shift-gb-london?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Indeed",
+                    "link": "https://uk.indeed.com/viewjob?jk=61f9ac932401059d&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on ZipRecruiter UK",
+                    "link": "https://www.ziprecruiter.co.uk/jobs/324144916-team-member-north-west-london-at-pret-a-manger?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Sercanto",
+                    "link": "https://www.sercanto.co.uk/detail/a/team-member-london-copy-copy-copy_london_38502617?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                    "title": "Apply on Job Vacancies - JobsByWeb",
+                    "link": "https://jobsbyweb.co.uk/job/team-member-london-copy-copy-copy-copy-copy-copy/ea2f9d46aec5?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+            ]
+        }
+    ]
+}

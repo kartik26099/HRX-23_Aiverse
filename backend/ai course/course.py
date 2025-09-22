@@ -13,6 +13,13 @@ load_dotenv()
 
 # API Key Configuration - Use consistent naming
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("gemini_api_key_research") or os.getenv("gemini_api_key_road_map")
+print(f"🔑 Gemini API Key Status: {'✅ Configured' if GEMINI_API_KEY else '❌ Not found'}")
+if GEMINI_API_KEY:
+    print(f"🔑 Gemini API Key (first 10 chars): {GEMINI_API_KEY[:10]}...")
+    print(f"🔑 Gemini API Key source: {'GEMINI_API_KEY' if os.getenv('GEMINI_API_KEY') else 'gemini_api_key_research' if os.getenv('gemini_api_key_research') else 'gemini_api_key_road_map'}")
+else:
+    print("⚠️ No Gemini API key found - using fallback configuration")
+
 SCRAPINGDOG_API_KEY = os.getenv("SCRAPINGDOG_API_KEY")
 
 # Initialize Flask app and enable CORS
@@ -27,6 +34,7 @@ CORS(app, origins=[
 # Configure Gemini with better error handling
 model = None
 try:
+    print(f"🤖 Attempting to configure Gemini AI...")
     if GEMINI_API_KEY:
         genai.configure(api_key=GEMINI_API_KEY)
         model = genai.GenerativeModel("gemini-2.0-flash")

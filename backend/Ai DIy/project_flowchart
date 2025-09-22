@@ -1,0 +1,60 @@
+```markdown
+digraph TweetABot {
+    bgcolor="#f7f9f9";
+    rankdir=TB;
+    nodesep=0.6;
+    ranksep=0.8;
+    splines=ortho;
+
+    node[shape=box, style="filled,rounded", fontname="Helvetica", penwidth=1.5, color="#34495e"];
+
+    Start[label="Start", shape=ellipse, fillcolor="#a2d9ce"];
+    Setup[label="Setup & Planning", shape=box, fillcolor="#aed6f1"];
+    GatherTools[label="Gather Tools & Materials", shape=box, fillcolor="#aed6f1"];
+    TwitterAPI[label="Twitter API v2", shape=cylinder, fillcolor="#d7dbdd"];
+    SentimentAPI[label="Sentiment Analysis API", shape=cylinder, fillcolor="#d7dbdd"];
+    NodeJS[label="Node.js 18.x", shape=cylinder, fillcolor="#d7dbdd"];
+    n8n[label="n8n", shape=cylinder, fillcolor="#d7dbdd"];
+    TypeScript[label="TypeScript", shape=cylinder, fillcolor="#d7dbdd"];
+    ProjectRequirements[label="Project Requirements & Objectives", shape=box, fillcolor="#aed6f1"];
+
+    Start -> GatherTools[label="Initiate Project", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    GatherTools -> Setup[label="Gather Tools & Materials", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Setup -> TwitterAPI[label="Setup Twitter API", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Setup -> SentimentAPI[label="Setup Sentiment Analysis API", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Setup -> NodeJS[label="Install Node.js 18.x", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Setup -> n8n[label="Install n8n", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Setup -> TypeScript[label="Install TypeScript (Optional)", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Setup -> ProjectRequirements[label="Understand Project Requirements", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+
+    Setup -> Day1[label="Day 1: Setup & Planning", shape=box, fillcolor="#f5b7b1"];
+    Day1 -> CreateWorkflow[label="Create n8n Workflow", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Day1 -> SetupTwitterAPI[label="Setup Twitter API", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Day1 -> DefineKeywords[label="Define Keywords", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+
+    Day1 -> Day2[label="Day 2: Learning & Exploration", shape=box, fillcolor="#f5b7b1"];
+    Day2 -> TestTwitterAPI[label="Test Twitter API", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Day2 -> TestSentimentAPI[label="Test Sentiment Analysis API", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Day2 -> ExploreN8N[label="Explore n8n's Built-in Nodes", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+
+    Day2 -> Day3[label="Day 3: Implementation & Build", shape=box, fillcolor="#f5b7b1"];
+    Day3 -> ImplementWorkflow[label="Implement Workflow", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Day3 -> AddErrorHandling[label="Add Error Handling & Logging", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Day3 -> ImplementWaitingMechanisms[label="Implement Waiting Mechanisms", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+
+    Day3 -> Day4[label="Day 4: Testing, Debugging & Reflection", shape=box, fillcolor="#f5b7b1"];
+    Day4 -> RunWorkflow[label="Run Workflow", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Day4 -> DebugErrors[label="Debug Errors & Unexpected Behavior", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Day4 -> EvaluatePerformance[label="Evaluate Performance & Accuracy", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+
+    Day4 -> Phase3[label="Phase 3: Testing and Refinement", shape=box, fillcolor="#f5b7b1"];
+    Phase3 -> TestFeatures[label="Test Implemented Features", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Phase3 -> DebugIssues[label="Debug & Fix Issues", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Phase3 -> OptimizePerformance[label="Optimize Performance", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+
+    Phase3 -> Phase4[label="Phase 4: Finalization", shape=box, fillcolor="#f5b7b1"];
+    Phase4 -> FinalTesting[label="Final Testing & Validation", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Phase4 -> Documentation[label="Documentation & Cleanup", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+    Phase4 -> ProjectCompletion[label="Project Completion & Delivery", color="#34495e", penwidth=1.5, arrowsize=0.9, fontname="Helvetica"];
+}
+```

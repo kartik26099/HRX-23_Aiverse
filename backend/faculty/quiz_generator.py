@@ -20,13 +20,20 @@ MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/llama-3.1-8b-instruct:free")
 
 # Load Gemini API key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+print(f"🔑 Gemini API Key Status: {'✅ Configured' if GEMINI_API_KEY else '❌ Not found'}")
+if GEMINI_API_KEY:
+    print(f"🔑 Gemini API Key (first 10 chars): {GEMINI_API_KEY[:10]}...")
+else:
+    print("⚠️ No Gemini API key found - using fallback configuration")
+
 if GEMINI_API_KEY:
     try:
+        print(f"🤖 Attempting to configure Gemini AI...")
         genai.configure(api_key=GEMINI_API_KEY)
         gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-        print("Gemini model for topic extraction initialized successfully.")
+        print("✅ Gemini model for topic extraction initialized successfully.")
     except Exception as e:
-        print(f"Error configuring Gemini API: {str(e)}")
+        print(f"❌ Error configuring Gemini API: {str(e)}")
         gemini_model = None
 else:
     gemini_model = None

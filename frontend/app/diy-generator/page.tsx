@@ -1238,7 +1238,7 @@ export default function DIYGeneratorPage() {
         </div>
 
         {/* Manual Emotion Detection Test Button */}
-        {!isEmotionDetectionActive && (
+        {/* {!isEmotionDetectionActive && (
           <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -1260,7 +1260,7 @@ export default function DIYGeneratorPage() {
               </Button>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Emotion Detection Status */}
         {isEmotionDetectionActive && (
@@ -1377,15 +1377,7 @@ export default function DIYGeneratorPage() {
         )}
         
         {/* Debug info - remove this after testing */}
-        <div style={{ position: 'fixed', top: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', color: 'white', padding: '10px', fontSize: '12px', zIndex: 9999 }}>
-          <div>showEmotionPopup: {showEmotionPopup ? 'true' : 'false'}</div>
-          <div>detectedEmotion: {detectedEmotion || 'null'}</div>
-          <div>emotionConfidence: {emotionConfidence ? (emotionConfidence * 100).toFixed(1) + '%' : 'null'}</div>
-          <div>isEmotionDetectionActive: {isEmotionDetectionActive ? 'true' : 'false'}</div>
-          <div>currentEmotion: {currentEmotion || 'null'}</div>
-          <div>isWebcamActive: {isWebcamActive ? 'true' : 'false'}</div>
-        </div>
-
+        
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Form Section */}
           <div className="lg:col-span-2">
@@ -1858,62 +1850,6 @@ export default function DIYGeneratorPage() {
                     </div>
                   )}
 
-                  {/* Project Stats Grid - Enhanced */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* Domain */}
-                    {roadmap.domain && (
-                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
-                        <div className="flex items-center space-x-3 mb-3">
-                          <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                            <Package className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                          </div>
-                          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Domain</h4>
-                        </div>
-                        <Badge className="bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800 text-sm">
-                          {roadmap.domain}
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Difficulty Level */}
-                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                          <Target className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                        </div>
-                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Difficulty</h4>
-                      </div>
-                      <Badge className={`border text-sm ${getExperienceColor(roadmap.experienceLevel)}`}>
-                        {roadmap.experienceLevel}
-                      </Badge>
-                    </div>
-
-                    {/* Time Estimate */}
-                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                          <Clock className="h-4 w-4 text-green-600 dark:text-green-400" />
-                        </div>
-                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Time Estimate</h4>
-                      </div>
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{roadmap.totalDuration}</span>
-                    </div>
-
-                    {/* Knowledge Assessment */}
-                    {roadmap.knowledgeAssessment && (
-                      <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-indigo-200 dark:border-indigo-800">
-                        <div className="flex items-center space-x-3 mb-3">
-                          <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-                            <Brain className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                          </div>
-                          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Knowledge Level</h4>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                          {roadmap.knowledgeAssessment}
-                        </p>
-                      </div>
-                    )}
-                  </div>
 
                   {/* Tools & Materials - Enhanced */}
                   <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-6 border border-emerald-200 dark:border-emerald-800">

@@ -50,8 +50,14 @@ CORS(app, origins=[
 ])
 
 # Configuration - Use environment variables for security
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', "AIzaSyDR_ZeeNfC8VQRy3A4CGIscnsJMY6lasAE")
-SCRAPINGDOG_API_KEY = os.getenv('SCRAPINGDOG_API_KEY', "685e5ad8efda46e6b557c43e")  
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', "AIzaSyCRu9yLCGcmXcY17jZjdF6-z4udL9eOS0kcd f")
+print(f"🔑 Gemini API Key Status: {'✅ Configured' if GEMINI_API_KEY else '❌ Not found'}")
+if GEMINI_API_KEY:
+    print(f"🔑 Gemini API Key (first 10 chars): {GEMINI_API_KEY[5:]}...")
+else:
+    print("⚠️ No Gemini API key found - using fallback configuration")
+
+SCRAPINGDOG_API_KEY = os.getenv('SCRAPINGDOG_API_KEY', "685fc0721d8c134bc24de2c7")  
 
 # GitHub API credentials
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', "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")
@@ -67,11 +73,14 @@ AZURE_TOKEN = os.getenv('AZURE_TOKEN', "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
 
 # Configure Gemini AI
 try:
+    print(f"🤖 Attempting to configure Gemini AI...")
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel('gemini-1.5-flash')
     logger.info("Gemini AI configured successfully")
+    print("✅ Gemini AI configured successfully")
 except Exception as e:
     logger.error(f"Failed to configure Gemini AI: {str(e)}")
+    print(f"❌ Failed to configure Gemini AI: {str(e)}")
     model = None
 
 def extract_video_id(youtube_url_or_id):

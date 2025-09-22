@@ -65,7 +65,7 @@ echo ✅ Web App created
 echo.
 
 echo 📦 Deploying application...
-az webapp deployment source config --resource-group %RESOURCE_GROUP% --name %APP_NAME% --repo-url https://github.com/YOUR_USERNAME/hackronyx.git --branch main --manual-integration
+az webapp deployment source config --resource-group %RESOURCE_GROUP% --name %APP_NAME% --repo-url https://github.com/kartik26099/HRX-23_Aiverse --branch main --manual-integration
 if %errorlevel% neq 0 (
     echo ❌ Failed to configure deployment source
     echo Please update the GitHub URL in this script

@@ -19,18 +19,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python version
-        uses: actions/setup-python@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Create and start virtual environment
+      - name: Install and build frontend
         run: |
-          python -m venv venv
-          source venv/bin/activate
-      
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+          cd frontend
+          npm install
+          npm run build
+          cd ..
         
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
@@ -41,6 +42,7 @@ jobs:
           path: |
             .
             !venv/
+            !frontend/node_modules/
 
   deploy:
     runs-on: ubuntu-latest

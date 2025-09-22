@@ -30,6 +30,12 @@ jobs:
         run: |
           cd frontend
           npm install --legacy-peer-deps
+          # Set real environment variables for build
+          export NEXT_PUBLIC_SUPABASE_URL="https://rcaulkjfpzpxbyuzcazm.supabase.co"
+          export NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjYXVsa2pmcHpweGJ5dXpjYXptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1ODY0MDcsImV4cCI6MjA2NjE2MjQwN30.TaQ9bdoOm87mLuK11uaugpemfwdc-mw6XNe1r5YZ1zM"
+          export SUPABASE_URL="https://rcaulkjfpzpxbyuzcazm.supabase.co"
+          export SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjYXVsa2pmcHpweGJ5dXpjYXptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1ODY0MDcsImV4cCI6MjA2NjE2MjQwN30.TaQ9bdoOm87mLuK11uaugpemfwdc-mw6XNe1r5YZ1zM"
+          export SUPABASE_SERVICE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjYXVsa2pmcHpweGJ5dXpjYXptIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDU4NjQwNywiZXhwIjoyMDY2MTYyNDA3fQ.sLs6seifOgB5TE8BtFPhuxzjIPDswanosO3zfyMBg8I"
           npm run build
           cd ..
         

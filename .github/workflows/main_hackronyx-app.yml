@@ -1,0 +1,93 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
+
+name: Build and deploy Python app to Azure Web App - hackronyx-app
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read #This is required for actions/checkout
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install and build frontend
+        run: |
+          cd frontend
+          npm install --legacy-peer-deps
+          # Create .env.local file with all environment variables
+          echo "NEXT_PUBLIC_SUPABASE_URL=https://rcaulkjfpzpxbyuzcazm.supabase.co" > .env.local
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjYXVsa2pmcHpweGJ5dXpjYXptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1ODY0MDcsImV4cCI6MjA2NjE2MjQwN30.TaQ9bdoOm87mLuK11uaugpemfwdc-mw6XNe1r5YZ1zM" >> .env.local
+          echo "SUPABASE_URL=https://rcaulkjfpzpxbyuzcazm.supabase.co" >> .env.local
+          echo "SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjYXVsa2pmcHpweGJ5dXpjYXptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1ODY0MDcsImV4cCI6MjA2NjE2MjQwN30.TaQ9bdoOm87mLuK11uaugpemfwdc-mw6XNe1r5YZ1zM" >> .env.local
+          echo "SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjYXVsa2pmcHpweGJ5dXpjYXptIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDU4NjQwNywiZXhwIjoyMDY2MTYyNDA3fQ.sLs6seifOgB5TE8BtFPhuxzjIPDswanosO3zfyMBg8I" >> .env.local
+          echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_bW9kZXN0LWJ1cnJvLTIzLmNsZXJrLmFjY291bnRzLmRldiQ" >> .env.local
+          echo "CLERK_SECRET_KEY=sk_test_p6p9yol58mx3UpoFKGGSUsTDl9R7zC9XwgPs5wS398" >> .env.local
+          # Verify the file was created
+          echo "=== .env.local contents ==="
+          cat .env.local
+          echo "=== End .env.local ==="
+          # Set environment variables for the build process
+          export NEXT_PUBLIC_SUPABASE_URL="https://rcaulkjfpzpxbyuzcazm.supabase.co"
+          export NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjYXVsa2pmcHpweGJ5dXpjYXptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1ODY0MDcsImV4cCI6MjA2NjE2MjQwN30.TaQ9bdoOm87mLuK11uaugpemfwdc-mw6XNe1r5YZ1zM"
+          export SUPABASE_URL="https://rcaulkjfpzpxbyuzcazm.supabase.co"
+          export SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjYXVsa2pmcHpweGJ5dXpjYXptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1ODY0MDcsImV4cCI6MjA2NjE2MjQwN30.TaQ9bdoOm87mLuK11uaugpemfwdc-mw6XNe1r5YZ1zM"
+          export SUPABASE_SERVICE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjYXVsa2pmcHpweGJ5dXpjYXptIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDU4NjQwNywiZXhwIjoyMDY2MTYyNDA3fQ.sLs6seifOgB5TE8BtFPhuxzjIPDswanosO3zfyMBg8I"
+          export NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_bW9kZXN0LWJ1cnJvLTIzLmNsZXJrLmFjY291bnRzLmRldiQ"
+          export CLERK_SECRET_KEY="sk_test_p6p9yol58mx3UpoFKGGSUsTDl9R7zC9XwgPs5wS398"
+          npm run build
+          cd ..
+        
+      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+
+      - name: Upload artifact for deployment jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-app
+          path: |
+            .
+            !venv/
+            !frontend/node_modules/
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: python-app
+      
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_9D2C609001BC45F9AC69D8DE414FD4B8 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_576CC46F129A44B1845D8381DCD61D99 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_9BAA09E5809946F184D66A729E2680FE }}
+
+      - name: 'Deploy to Azure Web App'
+        uses: azure/webapps-deploy@v3
+        id: deploy-to-webapp
+        with:
+          app-name: 'hackronyx-app'
+          slot-name: 'Production'
+          
